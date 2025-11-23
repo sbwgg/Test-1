@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { Movie } from '../types';
@@ -25,20 +26,20 @@ const AdvancedSearch: React.FC = () => {
     fetch();
   }, []);
 
-  // Extract unique options for dropdowns
-  const genres = useMemo(() => Array.from(new Set(movies.flatMap(m => m.genre))).sort(), [movies]);
+  // Extract unique options for dropdowns safely
+  const genres = useMemo(() => Array.from(new Set(movies.flatMap(m => Array.isArray(m.genre) ? m.genre : []))).sort(), [movies]);
   const years = useMemo(() => Array.from(new Set(movies.map(m => m.year))).sort((a: number, b: number) => b - a), [movies]);
-  const audioLangs = useMemo(() => Array.from(new Set(movies.flatMap(m => m.audioLanguages || []))).sort(), [movies]);
-  const subLangs = useMemo(() => Array.from(new Set(movies.flatMap(m => m.subtitleLanguages || []))).sort(), [movies]);
+  const audioLangs = useMemo(() => Array.from(new Set(movies.flatMap(m => Array.isArray(m.audioLanguages) ? m.audioLanguages : []))).sort(), [movies]);
+  const subLangs = useMemo(() => Array.from(new Set(movies.flatMap(m => Array.isArray(m.subtitleLanguages) ? m.subtitleLanguages : []))).sort(), [movies]);
 
   // Filter Logic
   const filteredMovies = movies.filter(movie => {
     const matchesQuery = movie.title.toLowerCase().includes(query.toLowerCase());
     const matchesType = selectedType === 'all' || movie.type === selectedType;
-    const matchesGenre = selectedGenre === 'all' || movie.genre.includes(selectedGenre);
+    const matchesGenre = selectedGenre === 'all' || (Array.isArray(movie.genre) && movie.genre.includes(selectedGenre));
     const matchesYear = selectedYear === 'all' || movie.year.toString() === selectedYear;
-    const matchesAudio = selectedAudio === 'all' || (movie.audioLanguages || []).includes(selectedAudio);
-    const matchesSub = selectedSub === 'all' || (movie.subtitleLanguages || []).includes(selectedSub);
+    const matchesAudio = selectedAudio === 'all' || (Array.isArray(movie.audioLanguages) && movie.audioLanguages.includes(selectedAudio));
+    const matchesSub = selectedSub === 'all' || (Array.isArray(movie.subtitleLanguages) && movie.subtitleLanguages.includes(selectedSub));
 
     return matchesQuery && matchesType && matchesGenre && matchesYear && matchesAudio && matchesSub;
   });

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Mic, Type, Film, Tv, Info } from 'lucide-react';
@@ -67,7 +68,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
           <div className="flex items-center gap-1" title="Audio Languages">
              <Mic className="w-3 h-3 text-gray-500" />
              <div className="flex -space-x-1">
-                {(movie.audioLanguages || ['English']).slice(0, 3).map((lang, i) => (
+                {(Array.isArray(movie.audioLanguages) ? movie.audioLanguages : ['English']).slice(0, 3).map((lang, i) => (
                   <span key={i} className="text-sm grayscale-[30%] hover:grayscale-0 transition-all z-0 hover:z-10 transform hover:scale-125 cursor-help" title={lang}>
                     {getFlag(lang)}
                   </span>
@@ -79,7 +80,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
           <div className="flex items-center gap-1" title="Subtitle Languages">
              <Type className="w-3 h-3 text-gray-500" />
              <div className="flex -space-x-1">
-                {(movie.subtitleLanguages || []).slice(0, 2).map((lang, i) => (
+                {(Array.isArray(movie.subtitleLanguages) ? movie.subtitleLanguages : []).slice(0, 2).map((lang, i) => (
                   <span key={i} className="text-sm grayscale-[30%] hover:grayscale-0 transition-all z-0 hover:z-10 transform hover:scale-125 cursor-help" title={lang}>
                     {getFlag(lang)}
                   </span>

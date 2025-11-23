@@ -40,7 +40,7 @@ const Profile: React.FC = () => {
             const data = await db.getPublicProfile(id);
             setProfile(data);
             
-            if(data.watchlist && data.watchlist.length > 0) {
+            if(data.watchlist && Array.isArray(data.watchlist) && data.watchlist.length > 0) {
                 const allMovies = await db.getMovies();
                 const userMovies = allMovies.filter(m => data.watchlist.includes(m.id));
                 setWatchlistMovies(userMovies);
@@ -102,7 +102,7 @@ const Profile: React.FC = () => {
                                 <span className="text-gray-500 uppercase text-xs font-bold tracking-wider">Posts</span>
                             </div>
                             <div className="text-center md:text-left">
-                                <span className="block text-xl font-bold text-white">{profile.watchlist.length}</span>
+                                <span className="block text-xl font-bold text-white">{Array.isArray(profile.watchlist) ? profile.watchlist.length : 0}</span>
                                 <span className="text-gray-500 uppercase text-xs font-bold tracking-wider">Watchlist</span>
                             </div>
                         </div>
@@ -171,7 +171,7 @@ const Profile: React.FC = () => {
                                         <div className="flex gap-4 text-xs text-gray-500">
                                             <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                                             <span className="text-violet-400">{post.category}</span>
-                                            <span>{post.likes?.length || 0} Likes</span>
+                                            <span>{Array.isArray(post.likes) ? post.likes.length : 0} Likes</span>
                                         </div>
                                     </Link>
                                 ))

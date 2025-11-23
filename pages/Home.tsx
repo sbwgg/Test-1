@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { db } from '../services/db';
 import { Movie } from '../types';
@@ -38,7 +39,8 @@ const Home: React.FC = () => {
 
   if (!featured) return <div className="text-white text-center mt-32 text-xl font-light">No content available. Login as Admin to add movies!</div>;
 
-  const genres = Array.from(new Set(movies.flatMap(m => m.genre)));
+  // Safety: Ensure m.genre is an array before flattening
+  const genres = Array.from(new Set(movies.flatMap(m => Array.isArray(m.genre) ? m.genre : [])));
 
   return (
     <div className="pb-20 bg-[#020617] overflow-hidden">
@@ -67,7 +69,7 @@ const Home: React.FC = () => {
              <div className="relative group/slider">
                 <div className="flex space-x-6 overflow-x-auto hide-scrollbar py-4 px-2 -mx-2 mask-linear-fade items-start">
                    {movies
-                     .filter(m => m.genre.includes(genre))
+                     .filter(m => Array.isArray(m.genre) && m.genre.includes(genre))
                      .map(movie => (
                        <div key={movie.id} className="flex-shrink-0">
                          <MovieCard movie={movie} />

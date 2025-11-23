@@ -19,8 +19,8 @@ const CommentItem: React.FC<{
     const [loading, setLoading] = useState(false);
     
     // Optimistic UI for voting could be complex recursively, relying on parent refresh for simplicity
-    const [localLikes, setLocalLikes] = useState(comment.likes || []);
-    const [localDislikes, setLocalDislikes] = useState(comment.dislikes || []);
+    const [localLikes, setLocalLikes] = useState(Array.isArray(comment.likes) ? comment.likes : []);
+    const [localDislikes, setLocalDislikes] = useState(Array.isArray(comment.dislikes) ? comment.dislikes : []);
 
     const handleVote = async (type: 'like' | 'dislike') => {
         if(!user) return alert("Please login to vote");
@@ -56,7 +56,6 @@ const CommentItem: React.FC<{
         }
     };
 
-    const score = localLikes.length - localDislikes.length;
     const isLiked = user && localLikes.includes(user.id);
     const isDisliked = user && localDislikes.includes(user.id);
 
@@ -154,8 +153,8 @@ const PostDetail: React.FC = () => {
              // Optimistic Update
              const newPost = { ...post };
              const userId = user.id;
-             if(!newPost.likes) newPost.likes = [];
-             if(!newPost.dislikes) newPost.dislikes = [];
+             if(!Array.isArray(newPost.likes)) newPost.likes = [];
+             if(!Array.isArray(newPost.dislikes)) newPost.dislikes = [];
 
              if(type === 'like') {
                  if(newPost.likes.includes(userId)) newPost.likes = newPost.likes.filter(id => id !== userId);
@@ -195,9 +194,9 @@ const PostDetail: React.FC = () => {
     if(loading) return <div className="h-screen bg-[#020617] flex items-center justify-center">Loading...</div>;
     if(!post) return <div className="h-screen bg-[#020617] text-white flex items-center justify-center">Post not found</div>;
 
-    const likeCount = (post.likes?.length || 0) - (post.dislikes?.length || 0);
-    const userLiked = user && post.likes?.includes(user.id);
-    const userDisliked = user && post.dislikes?.includes(user.id);
+    const likeCount = (Array.isArray(post.likes) ? post.likes.length : 0) - (Array.isArray(post.dislikes) ? post.dislikes.length : 0);
+    const userLiked = user && Array.isArray(post.likes) && post.likes.includes(user.id);
+    const userDisliked = user && Array.isArray(post.dislikes) && post.dislikes.includes(user.id);
 
     return (
         <div className="pt-28 min-h-screen px-4 md:px-12 pb-20 bg-[#020617]">

@@ -16,7 +16,8 @@ const Hero: React.FC<HeroProps> = ({ movie }) => {
   const [showModal, setShowModal] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
 
-  const isInWatchlist = user?.watchlist?.includes(movie.id);
+  // Safety check: Ensure watchlist is an array
+  const isInWatchlist = Array.isArray(user?.watchlist) && user.watchlist.includes(movie.id);
 
   const toggleWatchlist = async () => {
       if(!user) return alert("Please login to add to watchlist");
