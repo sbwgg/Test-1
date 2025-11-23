@@ -1,32 +1,63 @@
-// This service now proxies through the backend to keep the API KEY secure.
-const getHeaders = () => {
-  const token = localStorage.getItem('streamai_token');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
-  };
-};
+import { GoogleGenAI, Type } from "@google/genai";
 
-export const generateMovieMetadata = async (title: string) => {
+export interface MovieMetadata {
+  description: string;
+  genre: string[];
+  rating: string;
+  year: number;
+  duration: string;
+}
+
+export const generateMovieMetadata = async (title: string): Promise<MovieMetadata> => {
   try {
-    const response = await fetch('/api/ai/generate', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ title })
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.warn("API_KEY is missing in process.env. Falling back to mock data.");
+      throw new Error("API Key missing");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Generate metadata for the movie "${title}".`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            description: { type: Type.STRING },
+            genre: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+            rating: { type: Type.STRING },
+            year: { type: Type.INTEGER },
+            duration: { type: Type.STRING },
+          },
+        },
+      },
     });
 
-    if (!response.ok) throw new Error("AI Generation request failed");
-    
-    return await response.json();
+    if (response.text) {
+      return JSON.parse(response.text) as MovieMetadata;
+    }
+
+    throw new Error("No text returned from Gemini API");
+
   } catch (error) {
-    console.error("Gemini Generation Error:", error);
-    return {
-      description: "A mysterious journey into the unknown awaits in this thrilling cinematic experience.",
-      genre: ["Drama", "Mystery"],
-      rating: "PG-13",
-      year: 2024,
-      tagline: "Watch it now.",
-      duration: "1h 30m"
-    };
+    console.error("Gemini API Error:", error);
+    // Return mock data on failure to keep the app functional
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          description: `This is a generated placeholder description for "${title}". It describes a thrilling journey filled with suspense, action, and emotion. Perfect for audiences who love high-stakes drama.`,
+          genre: ["Drama", "Action"],
+          rating: "PG-13",
+          year: new Date().getFullYear(),
+          duration: "1h 55m",
+        });
+      }, 600);
+    });
   }
 };

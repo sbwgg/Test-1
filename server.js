@@ -6,7 +6,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -160,48 +159,6 @@ app.delete('/api/movies/:id', authenticateToken, requireAdmin, (req, res) => {
   db.movies = db.movies.filter(m => m.id !== req.params.id);
   saveDb(db);
   res.json({ success: true });
-});
-
-// 3. AI Generation
-app.post('/api/ai/generate', authenticateToken, requireAdmin, async (req, res) => {
-  const { title } = req.body;
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey) {
-    return res.status(500).json({ message: "Server API Key not configured" });
-  }
-
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Schema definition for Gemini
-    const responseSchema = {
-      type: Type.OBJECT,
-      properties: {
-        description: { type: Type.STRING },
-        genre: { type: Type.ARRAY, items: { type: Type.STRING } },
-        rating: { type: Type.STRING },
-        year: { type: Type.INTEGER },
-        tagline: { type: Type.STRING },
-        duration: { type: Type.STRING }
-      },
-      required: ["description", "genre", "rating", "year", "tagline", "duration"]
-    };
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Generate detailed movie metadata for a movie titled "${title}". Make it sound professional for a streaming service.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-      }
-    });
-
-    res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error("AI Error:", error);
-    res.status(500).json({ message: "AI Generation failed" });
-  }
 });
 
 // Handle SPA routing - Send all unhandled requests to index.html
