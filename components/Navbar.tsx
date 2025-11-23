@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
-import { Search, Bell, LogOut, ShieldCheck, Menu, X, ChevronDown, User, Sparkles } from 'lucide-react';
+import { Search, Bell, LogOut, ShieldCheck, Menu, X, ChevronDown, User as UserIcon, Sparkles, Settings, Users } from 'lucide-react';
 import { UserRole } from '../types';
 
 const Navbar: React.FC = () => {
@@ -28,7 +28,7 @@ const Navbar: React.FC = () => {
     { name: 'Home', path: '/' },
     { name: 'Series', path: '/search?type=series' },
     { name: 'Movies', path: '/search?type=movie' },
-    { name: 'New & Popular', path: '/' },
+    { name: 'Community', path: '/community' },
   ];
 
   return (
@@ -78,8 +78,12 @@ const Navbar: React.FC = () => {
             {user ? (
               <div className="relative group z-50">
                 <div className="flex items-center gap-2 cursor-pointer py-1">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-xs font-bold ring-2 ring-transparent group-hover:ring-white/20 transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)]">
-                    {user.name.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-xs font-bold ring-2 ring-transparent group-hover:ring-white/20 transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)] overflow-hidden">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="User" className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <ChevronDown className="h-4 w-4 text-white group-hover:rotate-180 transition-transform duration-500 ease-out" />
                 </div>
@@ -90,11 +94,14 @@ const Navbar: React.FC = () => {
                       <p className="text-sm text-white font-semibold">{user.name}</p>
                       <p className="text-xs text-gray-400 truncate">{user.email}</p>
                     </div>
-                    {user.role === UserRole.ADMIN && (
+                    {user.role === 'ADMIN' && (
                       <Link to="/admin" className="flex items-center px-4 py-2.5 text-sm text-gray-200 hover:bg-violet-600/20 hover:text-violet-200 rounded-md transition-colors">
                         <ShieldCheck className="h-4 w-4 mr-3 text-violet-400" /> Admin Dashboard
                       </Link>
                     )}
+                    <Link to="/settings" className="flex items-center px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 hover:text-white rounded-md transition-colors">
+                      <Settings className="h-4 w-4 mr-3" /> Account Settings
+                    </Link>
                     <button onClick={handleLogout} className="flex items-center w-full px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 hover:text-white rounded-md transition-colors">
                       <LogOut className="h-4 w-4 mr-3" /> Sign out
                     </button>
@@ -130,20 +137,27 @@ const Navbar: React.FC = () => {
             {user ? (
               <div className="space-y-2">
                 <div className="flex items-center px-3 mb-4 space-x-3">
-                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center font-bold text-lg">
-                    {user.name.charAt(0).toUpperCase()}
+                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center font-bold text-lg overflow-hidden">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="User" className="w-full h-full object-cover" />
+                      ) : (
+                        user.name.charAt(0).toUpperCase()
+                      )}
                    </div>
                    <div>
                      <p className="text-white font-medium">{user.name}</p>
                      <p className="text-gray-500 text-xs">{user.email}</p>
                    </div>
                 </div>
-                {user.role === UserRole.ADMIN && (
+                {user.role === 'ADMIN' && (
                    <Link to="/admin" className="block px-3 py-3 text-base font-medium text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 rounded-md">
                      <ShieldCheck className="inline-block w-4 h-4 mr-2" />
                      Admin Dashboard
                    </Link>
                 )}
+                <Link to="/settings" className="block px-3 py-3 text-base font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-md">
+                  <Settings className="inline-block w-4 h-4 mr-2" /> Settings
+                </Link>
                 <button onClick={handleLogout} className="block w-full text-left px-3 py-3 text-base font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-md">Sign Out</button>
               </div>
             ) : (

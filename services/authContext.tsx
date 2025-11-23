@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthState, UserRole } from '../types';
+import { db } from './db';
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -50,6 +51,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user);
   };
 
+  const updateProfile = async (data: Partial<User> & { password?: string }) => {
+    const result = await db.updateProfile(data);
+    // Update local storage and state with new token and user data
+    localStorage.setItem('streamai_token', result.token);
+    localStorage.setItem('streamai_user', JSON.stringify(result.user));
+    setUser(result.user);
+  };
+
   const logout = () => {
     localStorage.removeItem('streamai_token');
     localStorage.removeItem('streamai_user');
@@ -57,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

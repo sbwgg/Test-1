@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Info } from 'lucide-react';
 import { Movie } from '../types';
+import MovieDetailsModal from './MovieDetailsModal';
 
 interface HeroProps {
   movie: Movie;
 }
 
 const Hero: React.FC<HeroProps> = ({ movie }) => {
+  const [showModal, setShowModal] = useState(false);
+
   return (
+    <>
     <div className="relative h-[90vh] w-full overflow-hidden select-none">
       {/* Background Image with Zoom Effect */}
       <div className="absolute top-0 left-0 w-full h-full animate-fade-in">
@@ -55,7 +59,10 @@ const Hero: React.FC<HeroProps> = ({ movie }) => {
                 <Play className="h-6 w-6 mr-3 fill-black" />
                 Play Now
             </Link>
-            <button className="flex items-center bg-gray-500/30 text-white px-8 py-3.5 rounded-full font-bold text-lg hover:bg-gray-500/40 transition-all duration-300 transform hover:scale-105 backdrop-blur-md border border-white/20 shadow-lg">
+            <button 
+                onClick={() => setShowModal(true)}
+                className="flex items-center bg-gray-500/30 text-white px-8 py-3.5 rounded-full font-bold text-lg hover:bg-gray-500/40 transition-all duration-300 transform hover:scale-105 backdrop-blur-md border border-white/20 shadow-lg"
+            >
                 <Info className="h-6 w-6 mr-3" />
                 Details
             </button>
@@ -63,6 +70,10 @@ const Hero: React.FC<HeroProps> = ({ movie }) => {
         </div>
       </div>
     </div>
+    
+    {/* Details Modal */}
+    {showModal && <MovieDetailsModal movie={movie} onClose={() => setShowModal(false)} />}
+    </>
   );
 };
 

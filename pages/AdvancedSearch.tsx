@@ -27,7 +27,7 @@ const AdvancedSearch: React.FC = () => {
 
   // Extract unique options for dropdowns
   const genres = useMemo(() => Array.from(new Set(movies.flatMap(m => m.genre))).sort(), [movies]);
-  const years = useMemo(() => Array.from(new Set(movies.map(m => m.year))).sort((a, b) => b - a), [movies]);
+  const years = useMemo(() => Array.from(new Set(movies.map(m => m.year))).sort((a: number, b: number) => b - a), [movies]);
   const audioLangs = useMemo(() => Array.from(new Set(movies.flatMap(m => m.audioLanguages || []))).sort(), [movies]);
   const subLangs = useMemo(() => Array.from(new Set(movies.flatMap(m => m.subtitleLanguages || []))).sort(), [movies]);
 

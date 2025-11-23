@@ -8,9 +8,11 @@ import Register from './pages/Register';
 import Watch from './pages/Watch';
 import AdminDashboard from './pages/Admin';
 import AdvancedSearch from './pages/AdvancedSearch';
+import Settings from './pages/Settings';
+import Community from './pages/Community';
 
 // Protected Route Wrapper
-const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
+const ProtectedRoute = ({ children, requireAdmin = false }: React.PropsWithChildren<{ requireAdmin?: boolean }>) => {
   const { user, loading } = useAuth();
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-[#020617] text-white">Loading...</div>;
@@ -36,12 +38,19 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/search" element={<AdvancedSearch />} />
+              <Route path="/community" element={<Community />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
               <Route path="/watch/:id" element={
                 <ProtectedRoute>
                   <Watch />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               } />
               

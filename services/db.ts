@@ -1,7 +1,9 @@
-import { Movie, User } from '../types';
+import { Movie, User, Post } from '../types';
 
 const API_URL = '/api/movies';
 const USERS_URL = '/api/users';
+const PROFILE_URL = '/api/profile';
+const POSTS_URL = '/api/posts';
 
 const getHeaders = () => {
   const token = localStorage.getItem('streamai_token');
@@ -79,6 +81,17 @@ export const db = {
     if (!res.ok) throw new Error('Failed to update user');
   },
 
+  updateProfile: async (data: Partial<User> & { password?: string }): Promise<{user: User, token: string}> => {
+    const res = await fetch(PROFILE_URL, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to update profile');
+    return result;
+  },
+
   deleteUser: async (id: string): Promise<void> => {
     const res = await fetch(`${USERS_URL}/${id}`, {
         method: 'DELETE',
@@ -88,5 +101,43 @@ export const db = {
         const err = await res.json();
         throw new Error(err.message || 'Failed to delete user');
     }
+  },
+
+  // --- COMMUNITY POSTS ---
+  getPosts: async (): Promise<Post[]> => {
+    try {
+        const res = await fetch(POSTS_URL);
+        if (!res.ok) throw new Error('Failed to fetch posts');
+        return await res.json();
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+  },
+
+  createPost: async (post: { title: string, content: string, category: string }): Promise<Post> => {
+      const res = await fetch(POSTS_URL, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(post)
+      });
+      if (!res.ok) throw new Error('Failed to create post');
+      return await res.json();
+  },
+
+  deletePost: async (id: string): Promise<void> => {
+      const res = await fetch(`${POSTS_URL}/${id}`, {
+          method: 'DELETE',
+          headers: getHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete post');
+  },
+
+  togglePinPost: async (id: string): Promise<void> => {
+      const res = await fetch(`${POSTS_URL}/${id}/pin`, {
+          method: 'PUT',
+          headers: getHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to pin/unpin post');
   }
 };

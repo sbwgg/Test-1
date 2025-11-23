@@ -19,7 +19,8 @@ const DB_FILE = path.join(__dirname, 'data.json');
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+// Increase limit for base64 image uploads
+app.use(bodyParser.json({ limit: '50mb' }));
 // Serve static files from the React build directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -28,6 +29,20 @@ const getDb = () => {
   if (!fs.existsSync(DB_FILE)) {
     const seed = {
       users: [],
+      posts: [
+        {
+          id: '1',
+          userId: 'admin',
+          authorName: 'YumeTV Admin',
+          authorRole: 'ADMIN',
+          title: 'Welcome to the Community!',
+          content: 'This is the start of our new community section. Feel free to discuss your favorite movies and shows here.',
+          category: 'Updates',
+          createdAt: new Date().toISOString(),
+          isPinned: true,
+          likes: 10
+        }
+      ],
       movies: [
         {
           id: '1',
@@ -68,7 +83,12 @@ const getDb = () => {
     fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2));
     return seed;
   }
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  if (!db.posts) {
+    db.posts = [];
+    saveDb(db);
+  }
+  return db;
 };
 
 const saveDb = (data) => {
@@ -148,6 +168,38 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Update Profile (Self)
+app.put('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const index = db.users.findIndex(u => u.id === req.user.id);
+    if (index === -1) return res.status(404).json({ message: "User not found" });
+
+    const { name, email, password, avatarUrl } = req.body;
+    const user = db.users[index];
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    
+    if (password && password.trim() !== "") {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    db.users[index] = user;
+    saveDb(db);
+
+    const { password: _, ...safeUser } = user;
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
+    
+    res.json({ user: safeUser, token });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
+
 // 2. Movies
 app.get('/api/movies', (req, res) => {
   const db = getDb();
@@ -220,7 +272,7 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
         db.users[index].name = name || db.users[index].name;
         db.users[index].email = email || db.users[index].email;
         db.users[index].role = role || db.users[index].role;
-        db.users[index].avatarUrl = avatarUrl || db.users[index].avatarUrl;
+        db.users[index].avatarUrl = avatarUrl !== undefined ? avatarUrl : db.users[index].avatarUrl;
 
         // Update password if provided
         if (password && password.trim() !== "") {
@@ -247,6 +299,75 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
     db.users = db.users.filter(u => u.id !== req.params.id);
     saveDb(db);
     res.json({ success: true });
+});
+
+// 4. Community Posts
+
+app.get('/api/posts', (req, res) => {
+    const db = getDb();
+    // Sort pinned first, then newest
+    const posts = db.posts || [];
+    posts.sort((a, b) => {
+        if (a.isPinned === b.isPinned) {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return a.isPinned ? -1 : 1;
+    });
+    res.json(posts);
+});
+
+app.post('/api/posts', authenticateToken, (req, res) => {
+    const db = getDb();
+    const { title, content, category } = req.body;
+    
+    // Find current user details
+    const user = db.users.find(u => u.id === req.user.id);
+
+    const newPost = {
+        id: Date.now().toString(),
+        userId: req.user.id,
+        authorName: user ? user.name : 'Unknown',
+        authorAvatar: user ? user.avatarUrl : '',
+        authorRole: user ? user.role : 'USER',
+        title,
+        content,
+        category,
+        createdAt: new Date().toISOString(),
+        isPinned: false,
+        likes: 0
+    };
+
+    if (!db.posts) db.posts = [];
+    db.posts.push(newPost);
+    saveDb(db);
+    res.json(newPost);
+});
+
+app.delete('/api/posts/:id', authenticateToken, (req, res) => {
+    const db = getDb();
+    const index = db.posts.findIndex(p => p.id === req.params.id);
+    if (index === -1) return res.status(404).json({ message: "Post not found" });
+
+    const post = db.posts[index];
+    
+    // Allow delete if Admin OR Owner
+    if (req.user.role !== 'ADMIN' && post.userId !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    db.posts.splice(index, 1);
+    saveDb(db);
+    res.json({ success: true });
+});
+
+app.put('/api/posts/:id/pin', authenticateToken, requireAdmin, (req, res) => {
+    const db = getDb();
+    const index = db.posts.findIndex(p => p.id === req.params.id);
+    if (index === -1) return res.status(404).json({ message: "Post not found" });
+
+    db.posts[index].isPinned = !db.posts[index].isPinned;
+    saveDb(db);
+    res.json(db.posts[index]);
 });
 
 // Handle SPA routing - Send all unhandled requests to index.html
