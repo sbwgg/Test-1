@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { X, Play, Clock, Calendar, Star, Mic, Type } from 'lucide-react';
 import { Movie } from '../types';
+import { getFlag } from '../utils/languages';
 
 interface MovieDetailsModalProps {
   movie: Movie;
@@ -72,7 +73,9 @@ const MovieDetailsModal: React.FC<MovieDetailsModalProps> = ({ movie, onClose })
                         <span className="block text-gray-500 font-semibold mb-1">Audio</span>
                         <div className="flex flex-wrap gap-1">
                             {movie.audioLanguages?.map(l => (
-                                <span key={l} className="bg-white/5 px-2 py-1 rounded text-xs">{l}</span>
+                                <span key={l} className="bg-white/5 px-2 py-1 rounded text-xs flex items-center gap-1">
+                                    {getFlag(l)} {l}
+                                </span>
                             ))}
                         </div>
                      </div>
@@ -80,7 +83,9 @@ const MovieDetailsModal: React.FC<MovieDetailsModalProps> = ({ movie, onClose })
                         <span className="block text-gray-500 font-semibold mb-1">Subtitles</span>
                         <div className="flex flex-wrap gap-1">
                             {movie.subtitleLanguages?.map(l => (
-                                <span key={l} className="bg-white/5 px-2 py-1 rounded text-xs">{l}</span>
+                                <span key={l} className="bg-white/5 px-2 py-1 rounded text-xs flex items-center gap-1">
+                                    {getFlag(l)} {l}
+                                </span>
                             ))}
                         </div>
                      </div>

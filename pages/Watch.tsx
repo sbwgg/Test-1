@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../services/db';
 import { Movie } from '../types';
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, SkipForward, Rewind, MessageSquare, Mic } from 'lucide-react';
+import { getFlag } from '../utils/languages';
 
 const Watch: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -263,9 +264,10 @@ const Watch: React.FC = () => {
                                                 <button 
                                                     key={lang} 
                                                     onClick={() => changeAudio(lang)}
-                                                    className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${currentAudio === lang ? 'bg-violet-600 text-white font-bold' : 'text-gray-300 hover:bg-white/10'}`}
+                                                    className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors flex items-center justify-between ${currentAudio === lang ? 'bg-violet-600 text-white font-bold' : 'text-gray-300 hover:bg-white/10'}`}
                                                 >
-                                                    {lang}
+                                                    <span>{lang}</span>
+                                                    <span>{getFlag(lang)}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -289,9 +291,10 @@ const Watch: React.FC = () => {
                                                 <button 
                                                     key={lang} 
                                                     onClick={() => changeSub(lang)}
-                                                    className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${currentSub === lang ? 'bg-violet-600 text-white font-bold' : 'text-gray-300 hover:bg-white/10'}`}
+                                                    className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors flex items-center justify-between ${currentSub === lang ? 'bg-violet-600 text-white font-bold' : 'text-gray-300 hover:bg-white/10'}`}
                                                 >
-                                                    {lang}
+                                                     <span>{lang}</span>
+                                                     <span>{getFlag(lang)}</span>
                                                 </button>
                                             ))}
                                         </div>

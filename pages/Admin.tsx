@@ -2,7 +2,115 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { generateMovieMetadata } from '../services/gemini';
 import { Movie, User, UserRole } from '../types';
-import { Trash2, Plus, Sparkles, Film, BarChart3, Users, PlayCircle, Search, X, ShieldCheck, Clock, Calendar, Mic, Type, PenSquare, Save, UserCog, KeyRound } from 'lucide-react';
+import { LANGUAGES, getFlag } from '../utils/languages';
+import { Trash2, Plus, Sparkles, Film, BarChart3, Users, PlayCircle, Search, X, ShieldCheck, Clock, Calendar, Mic, Type, PenSquare, Save, UserCog, KeyRound, Check } from 'lucide-react';
+
+// Internal MultiSelect Component
+const LanguageMultiSelect: React.FC<{
+  label: string;
+  icon: React.ElementType;
+  selected: string[];
+  onChange: (selected: string[]) => void;
+}> = ({ label, icon: Icon, selected, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const toggleLanguage = (langName: string) => {
+    if (selected.includes(langName)) {
+      onChange(selected.filter(s => s !== langName));
+    } else {
+      onChange([...selected, langName]);
+    }
+  };
+
+  const filteredLanguages = LANGUAGES.filter(l => 
+    l.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="relative group">
+      <label className="text-sm text-gray-400 mb-2 block flex items-center gap-2">
+        <Icon className="w-3 h-3" /> {label}
+      </label>
+      
+      {/* Selected Tags Display */}
+      <div 
+        className="min-h-[42px] w-full bg-[#0f172a] border border-gray-600 rounded-lg px-3 py-2 cursor-pointer flex flex-wrap gap-2 hover:border-violet-500 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {selected.length === 0 && <span className="text-gray-500 text-sm italic pt-0.5">Select languages...</span>}
+        {selected.map(lang => (
+          <span key={lang} className="bg-violet-600/20 border border-violet-500/30 text-violet-200 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+             {getFlag(lang)} {lang}
+             <button 
+                onClick={(e) => { e.stopPropagation(); toggleLanguage(lang); }} 
+                className="hover:text-white ml-1"
+             >
+               <X className="w-3 h-3" />
+             </button>
+          </span>
+        ))}
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute top-full left-0 w-full mt-2 bg-[#1e293b] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-scale-in">
+           {/* Search Bar */}
+           <div className="p-3 border-b border-gray-700">
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                <input 
+                  type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-[#0f172a] rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-violet-500"
+                  placeholder="Search countries..."
+                  autoFocus
+                />
+             </div>
+           </div>
+           
+           {/* List */}
+           <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+              {filteredLanguages.map(lang => {
+                const isSelected = selected.includes(lang.name);
+                return (
+                  <div 
+                    key={lang.name}
+                    onClick={() => toggleLanguage(lang.name)}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-violet-600 text-white' : 'text-gray-300 hover:bg-white/5'}`}
+                  >
+                     <span className="flex items-center gap-2 text-sm">
+                       <span className="text-lg">{lang.flag}</span>
+                       {lang.name}
+                     </span>
+                     {isSelected && <Check className="w-4 h-4" />}
+                  </div>
+                );
+              })}
+              {filteredLanguages.length === 0 && (
+                <div className="text-center text-gray-500 py-4 text-xs">No languages found</div>
+              )}
+           </div>
+           
+           {/* Footer */}
+           <div className="p-2 border-t border-gray-700 bg-[#0f172a]">
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-lg"
+              >
+                Done
+              </button>
+           </div>
+        </div>
+      )}
+      
+      {/* Overlay to close when clicking outside */}
+      {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>}
+    </div>
+  );
+};
+
 
 const AdminDashboard: React.FC = () => {
   // Tabs
@@ -31,8 +139,10 @@ const AdminDashboard: React.FC = () => {
   const [duration, setDuration] = useState('');
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [contentType, setContentType] = useState<'movie' | 'series'>('movie');
-  const [audioLangs, setAudioLangs] = useState('');
-  const [subLangs, setSubLangs] = useState('');
+  
+  // Replaced simple strings with arrays for languages
+  const [audioLangs, setAudioLangs] = useState<string[]>([]);
+  const [subLangs, setSubLangs] = useState<string[]>([]);
 
   // User Form Fields
   const [userName, setUserName] = useState('');
@@ -72,8 +182,8 @@ const AdminDashboard: React.FC = () => {
       setDuration(movie.duration);
       setYear(movie.year);
       setContentType(movie.type);
-      setAudioLangs(movie.audioLanguages ? movie.audioLanguages.join(', ') : '');
-      setSubLangs(movie.subtitleLanguages ? movie.subtitleLanguages.join(', ') : '');
+      setAudioLangs(movie.audioLanguages || []);
+      setSubLangs(movie.subtitleLanguages || []);
       setIsFormOpen(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -109,8 +219,8 @@ const AdminDashboard: React.FC = () => {
       duration,
       year,
       type: contentType,
-      audioLanguages: audioLangs.split(',').map(l => l.trim()).filter(Boolean),
-      subtitleLanguages: subLangs.split(',').map(l => l.trim()).filter(Boolean),
+      audioLanguages: audioLangs,
+      subtitleLanguages: subLangs,
     };
 
     if (editingId) {
@@ -128,7 +238,7 @@ const AdminDashboard: React.FC = () => {
     setEditingId(null);
     setTitle(''); setVideoUrl(''); setCoverUrl(''); setDescription('');
     setGenre(''); setRating(''); setDuration(''); setYear(new Date().getFullYear());
-    setAudioLangs(''); setSubLangs('');
+    setAudioLangs([]); setSubLangs([]);
   };
 
   // --- USER ACTIONS ---
@@ -349,30 +459,18 @@ const AdminDashboard: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="relative group">
-                                <input 
-                                    type="text" 
-                                    value={audioLangs}
-                                    onChange={(e) => setAudioLangs(e.target.value)}
-                                    className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                    placeholder=" "
-                                />
-                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1 flex items-center gap-1">
-                                    <Mic className="w-3 h-3"/> Audio (comma sep)
-                                </label>
-                            </div>
-                            <div className="relative group">
-                                <input 
-                                    type="text" 
-                                    value={subLangs}
-                                    onChange={(e) => setSubLangs(e.target.value)}
-                                    className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                    placeholder=" "
-                                />
-                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1 flex items-center gap-1">
-                                    <Type className="w-3 h-3"/> Subs (comma sep)
-                                </label>
-                            </div>
+                           <LanguageMultiSelect 
+                              label="Audio Languages" 
+                              icon={Mic} 
+                              selected={audioLangs} 
+                              onChange={setAudioLangs} 
+                           />
+                           <LanguageMultiSelect 
+                              label="Subtitle Languages" 
+                              icon={Type} 
+                              selected={subLangs} 
+                              onChange={setSubLangs} 
+                           />
                         </div>
                     </div>
 
@@ -495,8 +593,18 @@ const AdminDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4">
                             <div className="flex flex-col gap-1 text-xs text-gray-400">
-                                <div className="flex items-center gap-1"><Mic className="w-3 h-3"/> {movie.audioLanguages?.slice(0,2).join(', ') || 'En'}</div>
-                                <div className="flex items-center gap-1"><Type className="w-3 h-3"/> {movie.subtitleLanguages?.slice(0,2).join(', ') || 'None'}</div>
+                                <div className="flex items-center gap-1">
+                                  <Mic className="w-3 h-3"/> 
+                                  {movie.audioLanguages?.slice(0,3).map(l => (
+                                    <span key={l} title={l}>{getFlag(l)}</span>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Type className="w-3 h-3"/> 
+                                  {movie.subtitleLanguages?.slice(0,3).map(l => (
+                                    <span key={l} title={l}>{getFlag(l)}</span>
+                                  ))}
+                                </div>
                             </div>
                         </td>
                         <td className="px-6 py-4">

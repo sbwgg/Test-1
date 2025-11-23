@@ -1,0 +1,76 @@
+export interface LanguageData {
+  name: string;
+  flag: string;
+}
+
+export const LANGUAGES: LanguageData[] = [
+  { name: 'English', flag: '🇺🇸' },
+  { name: 'Latvian', flag: '🇱🇻' },
+  { name: 'Russian', flag: '🇷🇺' },
+  { name: 'Spanish', flag: '🇪🇸' },
+  { name: 'French', flag: '🇫🇷' },
+  { name: 'German', flag: '🇩🇪' },
+  { name: 'Italian', flag: '🇮🇹' },
+  { name: 'Japanese', flag: '🇯🇵' },
+  { name: 'Korean', flag: '🇰🇷' },
+  { name: 'Chinese', flag: '🇨🇳' },
+  { name: 'Portuguese', flag: '🇧🇷' },
+  { name: 'Hindi', flag: '🇮🇳' },
+  { name: 'Arabic', flag: '🇸🇦' },
+  { name: 'Turkish', flag: '🇹🇷' },
+  { name: 'Dutch', flag: '🇳🇱' },
+  { name: 'Swedish', flag: '🇸🇪' },
+  { name: 'Norwegian', flag: '🇳🇴' },
+  { name: 'Danish', flag: '🇩🇰' },
+  { name: 'Finnish', flag: '🇫🇮' },
+  { name: 'Polish', flag: '🇵🇱' },
+  { name: 'Ukrainian', flag: '🇺🇦' },
+  { name: 'Czech', flag: '🇨🇿' },
+  { name: 'Hungarian', flag: '🇭🇺' },
+  { name: 'Greek', flag: '🇬🇷' },
+  { name: 'Hebrew', flag: '🇮🇱' },
+  { name: 'Thai', flag: '🇹🇭' },
+  { name: 'Vietnamese', flag: '🇻🇳' },
+  { name: 'Indonesian', flag: '🇮🇩' },
+  { name: 'Lithuanian', flag: '🇱🇹' },
+  { name: 'Estonian', flag: '🇪🇪' },
+  { name: 'Romanian', flag: '🇷🇴' },
+  { name: 'Bulgarian', flag: '🇧🇬' },
+  { name: 'Croatian', flag: '🇭🇷' },
+  { name: 'Serbian', flag: '🇷🇸' },
+  { name: 'Slovak', flag: '🇸🇰' },
+  { name: 'Slovenian', flag: '🇸🇮' },
+  { name: 'Icelandic', flag: '🇮🇸' },
+  { name: 'Irish', flag: '🇮🇪' },
+  { name: 'Catalan', flag: '🏳️' },
+  { name: 'Basque', flag: '🏳️' },
+  { name: 'Filipino', flag: '🇵🇭' },
+  { name: 'Malay', flag: '🇲🇾' },
+  { name: 'Persian', flag: '🇮🇷' },
+  { name: 'Urdu', flag: '🇵🇰' },
+  { name: 'Bengali', flag: '🇧🇩' },
+  { name: 'Tamil', flag: '🇮🇳' },
+  { name: 'Telugu', flag: '🇮🇳' },
+  { name: 'Georgian', flag: '🇬🇪' },
+  { name: 'Armenian', flag: '🇦🇲' },
+  { name: 'Azerbaijani', flag: '🇦🇿' },
+  { name: 'Kazakh', flag: '🇰🇿' },
+  { name: 'Albanian', flag: '🇦🇱' },
+  { name: 'Macedonian', flag: '🇲🇰' },
+  { name: 'Bosnian', flag: '🇧🇦' },
+  { name: 'Montenegrin', flag: '🇲🇪' },
+  { name: 'Nepali', flag: '🇳🇵' },
+  { name: 'Sinhala', flag: '🇱🇰' },
+  { name: 'Burmese', flag: '🇲🇲' },
+  { name: 'Khmer', flag: '🇰🇭' },
+  { name: 'Lao', flag: '🇱🇦' },
+  { name: 'Mongolian', flag: '🇲🇳' },
+  { name: 'Swahili', flag: '🇰🇪' },
+  { name: 'Afrikaans', flag: '🇿🇦' }
+];
+
+export const getFlag = (languageName: string): string => {
+  const normalized = languageName.trim();
+  const found = LANGUAGES.find(l => l.name.toLowerCase() === normalized.toLowerCase());
+  return found ? found.flag : '🏳️';
+};

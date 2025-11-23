@@ -2,28 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Mic, Type, Film, Tv, Info } from 'lucide-react';
 import { Movie } from '../types';
+import { getFlag } from '../utils/languages';
 
 interface MovieCardProps {
   movie: Movie;
 }
-
-const getFlagEmoji = (language: string) => {
-  const map: { [key: string]: string } = {
-    'English': '🇺🇸',
-    'Japanese': '🇯🇵',
-    'Spanish': '🇪🇸',
-    'French': '🇫🇷',
-    'German': '🇩🇪',
-    'Italian': '🇮🇹',
-    'Korean': '🇰🇷',
-    'Chinese': '🇨🇳',
-    'Russian': '🇷🇺',
-    'Portuguese': '🇧🇷',
-    'Hindi': '🇮🇳',
-    'Thai': '🇹🇭',
-  };
-  return map[language] || '🏳️';
-};
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   return (
@@ -61,7 +44,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
            <h3 className="text-white font-bold text-sm leading-tight truncate group-hover:text-violet-400 transition-colors flex-1" title={movie.title}>
              {movie.title}
            </h3>
-           {/* Info Icon for potential Quick View if expanded later, or just visual balance */}
+           {/* Info Icon */}
            <Link to={`/watch/${movie.id}`} className="text-gray-500 hover:text-white transition-colors">
               <Info className="w-3.5 h-3.5" />
            </Link>
@@ -86,7 +69,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
              <div className="flex -space-x-1">
                 {(movie.audioLanguages || ['English']).slice(0, 3).map((lang, i) => (
                   <span key={i} className="text-sm grayscale-[30%] hover:grayscale-0 transition-all z-0 hover:z-10 transform hover:scale-125 cursor-help" title={lang}>
-                    {getFlagEmoji(lang)}
+                    {getFlag(lang)}
                   </span>
                 ))}
              </div>
@@ -98,7 +81,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
              <div className="flex -space-x-1">
                 {(movie.subtitleLanguages || []).slice(0, 2).map((lang, i) => (
                   <span key={i} className="text-sm grayscale-[30%] hover:grayscale-0 transition-all z-0 hover:z-10 transform hover:scale-125 cursor-help" title={lang}>
-                    {getFlagEmoji(lang)}
+                    {getFlag(lang)}
                   </span>
                 ))}
              </div>
