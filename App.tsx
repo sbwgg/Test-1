@@ -51,7 +51,7 @@ const App: React.FC = () => {
             </Routes>
           </main>
           <footer className="py-8 text-center text-gray-500 text-sm border-t border-gray-800 mt-12">
-            <p>© 2024 YumeTV. Powered by Google Gemini.</p>
+            <p>© 2024 YumeTV. All rights reserved.</p>
           </footer>
         </div>
       </HashRouter>

@@ -50,7 +50,7 @@ const AdminDashboard: React.FC = () => {
       
       if (!coverUrl) setCoverUrl(`https://picsum.photos/seed/${title.replace(/\s/g, '')}/1920/800`);
     } catch (e) {
-      alert("AI Generation failed.");
+      alert("Generation failed.");
     } finally {
       setLoadingAI(false);
     }
@@ -170,7 +170,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 bg-gradient-to-r from-purple-900/50 to-blue-900/50 border border-white/10 px-3 py-1.5 rounded-full">
                     <Sparkles className="w-4 h-4 text-purple-400" />
-                    <span className="text-xs text-purple-200 font-medium">AI Assisted</span>
+                    <span className="text-xs text-purple-200 font-medium">Auto Fill</span>
                 </div>
             </div>
             
@@ -200,7 +200,7 @@ const AdminDashboard: React.FC = () => {
                         onClick={handleAIGenerate}
                         disabled={loadingAI}
                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-lg flex items-center justify-center disabled:opacity-50 transition-all shadow-lg shadow-purple-900/20"
-                        title="Auto-fill with AI"
+                        title="Auto-fill"
                         >
                         {loadingAI ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> : <Sparkles className="w-5 h-5" />}
                         </button>
