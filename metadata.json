@@ -1,0 +1,5 @@
+{
+  "name": "StreamAI - Intelligent Streaming Platform",
+  "description": "A fully functional streaming platform simulation with Admin CMS. Features AI-powered content generation using Gemini 2.5, local persistence, role-based authentication, and a responsive dark-mode UI. To run: npm install react react-dom react-router-dom lucide-react @google/genai clsx tailwind-merge",
+  "requestFramePermissions": []
+}
