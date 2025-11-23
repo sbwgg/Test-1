@@ -4,6 +4,13 @@ export enum UserRole {
   ADMIN = 'ADMIN'
 }
 
+export interface SiteSettings {
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  showNotification: boolean;
+  notificationMessage: string;
+}
+
 export interface User {
   id: string;
   email: string;

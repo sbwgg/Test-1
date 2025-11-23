@@ -1,10 +1,11 @@
 
-import { Movie, User, Post } from '../types';
+import { Movie, User, Post, SiteSettings } from '../types';
 
 const API_URL = '/api/movies';
 const USERS_URL = '/api/users';
 const PROFILE_URL = '/api/profile';
 const POSTS_URL = '/api/posts';
+const SETTINGS_URL = '/api/settings';
 
 const getHeaders = () => {
   const token = localStorage.getItem('streamai_token');
@@ -15,6 +16,23 @@ const getHeaders = () => {
 };
 
 export const db = {
+  // --- SETTINGS ---
+  getSettings: async (): Promise<SiteSettings> => {
+      const res = await fetch(SETTINGS_URL);
+      if (!res.ok) throw new Error("Failed to fetch settings");
+      return await res.json();
+  },
+
+  updateSettings: async (settings: SiteSettings): Promise<SiteSettings> => {
+      const res = await fetch(SETTINGS_URL, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(settings)
+      });
+      if (!res.ok) throw new Error("Failed to update settings");
+      return await res.json();
+  },
+
   // --- MOVIES ---
   getMovies: async (): Promise<Movie[]> => {
     try {

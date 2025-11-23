@@ -29,7 +29,13 @@ const getDb = () => {
     const seed = {
       users: [],
       posts: [],
-      movies: []
+      movies: [],
+      settings: {
+        maintenanceMode: false,
+        maintenanceMessage: "We are currently performing scheduled maintenance. We will be back shortly.",
+        showNotification: false,
+        notificationMessage: "Important announcement!"
+      }
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2));
     return seed;
@@ -37,6 +43,14 @@ const getDb = () => {
   const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   // Migration checks
   if (!db.posts) db.posts = [];
+  if (!db.settings) {
+      db.settings = {
+        maintenanceMode: false,
+        maintenanceMessage: "We are currently performing scheduled maintenance. We will be back shortly.",
+        showNotification: false,
+        notificationMessage: "Important announcement!"
+      };
+  }
   return db;
 };
 
@@ -64,6 +78,19 @@ const requireAdmin = (req, res, next) => {
 };
 
 // --- API ROUTES ---
+
+// 0. Settings
+app.get('/api/settings', (req, res) => {
+    const db = getDb();
+    res.json(db.settings);
+});
+
+app.put('/api/settings', authenticateToken, requireAdmin, (req, res) => {
+    const db = getDb();
+    db.settings = { ...db.settings, ...req.body };
+    saveDb(db);
+    res.json(db.settings);
+});
 
 // 1. Auth
 app.post('/api/auth/register', async (req, res) => {

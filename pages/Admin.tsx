@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { generateMovieMetadata } from '../services/gemini';
 import { Movie, User, UserRole } from '../types';
+import { useSettings } from '../services/settingsContext';
 import { LANGUAGES, getFlag } from '../utils/languages';
-import { Trash2, Plus, Sparkles, Film, BarChart3, Users, PlayCircle, Search, X, ShieldCheck, Clock, Calendar, Mic, Type, PenSquare, Save, UserCog, KeyRound, Check } from 'lucide-react';
+import { Trash2, Plus, Sparkles, Film, BarChart3, Users, PlayCircle, Search, X, ShieldCheck, Clock, Calendar, Mic, Type, PenSquare, Save, UserCog, KeyRound, Check, Wrench, AlertTriangle, ToggleLeft, ToggleRight, LayoutTemplate } from 'lucide-react';
 
 // Internal MultiSelect Component
 const LanguageMultiSelect: React.FC<{
@@ -113,8 +115,10 @@ const LanguageMultiSelect: React.FC<{
 
 
 const AdminDashboard: React.FC = () => {
+  const { settings, updateSettings } = useSettings();
+
   // Tabs
-  const [activeTab, setActiveTab] = useState<'content' | 'users'>('content');
+  const [activeTab, setActiveTab] = useState<'content' | 'users' | 'settings'>('content');
 
   // Content State
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -128,6 +132,13 @@ const AdminDashboard: React.FC = () => {
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userSearchTerm, setUserSearchTerm] = useState('');
+
+  // Settings State
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Movie Form Fields
   const [title, setTitle] = useState('');
@@ -161,6 +172,14 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     refreshData();
   }, []);
+
+  // Sync local state with context settings on mount/change
+  useEffect(() => {
+    setMaintenanceMode(settings.maintenanceMode);
+    setMaintenanceMessage(settings.maintenanceMessage);
+    setShowNotification(settings.showNotification);
+    setNotificationMessage(settings.notificationMessage);
+  }, [settings]);
 
   // --- CONTENT ACTIONS ---
 
@@ -282,6 +301,24 @@ const AdminDashboard: React.FC = () => {
       setEditingUserId(null);
   };
 
+  // --- SETTINGS ACTIONS ---
+  const handleSaveSettings = async () => {
+      setSettingsLoading(true);
+      try {
+          await updateSettings({
+              maintenanceMode,
+              maintenanceMessage,
+              showNotification,
+              notificationMessage
+          });
+          alert("Site settings updated successfully.");
+      } catch (e) {
+          alert("Failed to update settings.");
+      } finally {
+          setSettingsLoading(false);
+      }
+  };
+
   const filteredMovies = movies.filter(m => m.title.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredUsers = users.filter(u => u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || u.email.includes(userSearchTerm));
 
@@ -327,20 +364,27 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-800 mb-8">
+      <div className="flex border-b border-gray-800 mb-8 overflow-x-auto hide-scrollbar">
           <button 
             onClick={() => setActiveTab('content')}
-            className={`px-6 py-3 font-bold text-sm transition-colors relative ${activeTab === 'content' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
+            className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'content' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
           >
               <div className="flex items-center gap-2"><Film className="w-4 h-4" /> Content Library</div>
               {activeTab === 'content' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-500"></div>}
           </button>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`px-6 py-3 font-bold text-sm transition-colors relative ${activeTab === 'users' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
+            className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'users' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
           >
               <div className="flex items-center gap-2"><Users className="w-4 h-4" /> User Management</div>
               {activeTab === 'users' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-500"></div>}
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'settings' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+              <div className="flex items-center gap-2"><Wrench className="w-4 h-4" /> Site Settings</div>
+              {activeTab === 'settings' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-500"></div>}
           </button>
       </div>
 
@@ -744,6 +788,99 @@ const AdminDashboard: React.FC = () => {
              </table>
          </div>
       </>
+      )}
+
+      {/* === SETTINGS TAB === */}
+      {activeTab === 'settings' && (
+          <div className="animate-fade-in max-w-2xl mx-auto">
+              <div className="flex justify-center mb-8">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                      <LayoutTemplate className="w-8 h-8 text-violet-500" />
+                      Platform Configuration
+                  </h2>
+              </div>
+              
+              <div className="bg-[#1e293b]/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 shadow-2xl space-y-8">
+                  
+                  {/* Maintenance Mode Section */}
+                  <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
+                          <div>
+                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                  <Wrench className="w-5 h-5 text-orange-400" /> Maintenance Mode
+                              </h3>
+                              <p className="text-sm text-gray-400 mt-1">
+                                  When enabled, only administrators can access the site. All other users will see a maintenance screen.
+                              </p>
+                          </div>
+                          <button 
+                              onClick={() => setMaintenanceMode(!maintenanceMode)}
+                              className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${maintenanceMode ? 'bg-violet-600' : 'bg-gray-600'}`}
+                          >
+                              <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                          </button>
+                      </div>
+                      
+                      {maintenanceMode && (
+                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 animate-slide-up">
+                              <label className="text-sm text-orange-200 block mb-2 font-medium">Maintenance Message</label>
+                              <textarea 
+                                  value={maintenanceMessage}
+                                  onChange={(e) => setMaintenanceMessage(e.target.value)}
+                                  className="w-full bg-[#0f172a] border border-orange-500/30 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500 transition-all h-24 resize-none"
+                                  placeholder="We are currently performing scheduled maintenance..."
+                              />
+                          </div>
+                      )}
+                  </div>
+
+                  {/* Notification Banner Section */}
+                  <div className="space-y-4 pt-4">
+                      <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
+                          <div>
+                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                  <AlertTriangle className="w-5 h-5 text-yellow-400" /> Global Notification
+                              </h3>
+                              <p className="text-sm text-gray-400 mt-1">
+                                  Display a dismissible warning or announcement banner at the top of every page.
+                              </p>
+                          </div>
+                          <button 
+                              onClick={() => setShowNotification(!showNotification)}
+                              className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${showNotification ? 'bg-violet-600' : 'bg-gray-600'}`}
+                          >
+                              <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${showNotification ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                          </button>
+                      </div>
+                      
+                      {showNotification && (
+                          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 animate-slide-up">
+                              <label className="text-sm text-yellow-200 block mb-2 font-medium">Notification Text</label>
+                              <input 
+                                  type="text"
+                                  value={notificationMessage}
+                                  onChange={(e) => setNotificationMessage(e.target.value)}
+                                  className="w-full bg-[#0f172a] border border-yellow-500/30 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-yellow-500 transition-all"
+                                  placeholder="Important: Service update incoming..."
+                              />
+                          </div>
+                      )}
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="pt-6 flex justify-end">
+                      <button 
+                          onClick={handleSaveSettings}
+                          disabled={settingsLoading}
+                          className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-violet-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+                      >
+                          {settingsLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> : <Save className="w-5 h-5" />}
+                          Save Configuration
+                      </button>
+                  </div>
+
+              </div>
+          </div>
       )}
 
     </div>
