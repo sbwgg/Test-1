@@ -1,10 +1,13 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
+import { Sparkles, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -16,7 +19,7 @@ const Register: React.FC = () => {
     setError('');
     
     try {
-      await register(email, name);
+      await register(email, name, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message);
@@ -26,72 +29,97 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-black overflow-hidden">
-      {/* Background with overlay */}
-      <div className="absolute inset-0 bg-[url('https://assets.nflxext.com/ffe/siteui/vlv3/f841d4c7-10e1-40af-bcae-07a3f8dc141a/f6d7434e-d6de-4185-a6d4-c77a2d08737b/US-en-20220502-popsignuptwoweeks-perspective_alpha_website_medium.jpg')] bg-cover bg-no-repeat opacity-50 scale-105">
-         <div className="absolute inset-0 bg-black/60 bg-gradient-to-t from-black via-transparent to-black"></div>
-      </div>
+    <div className="min-h-screen relative flex items-center justify-center bg-[#020617] overflow-hidden">
+      {/* Decorative Gradients */}
+      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-600/20 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-600/20 rounded-full blur-[120px]" />
 
-      <div className="relative z-10 bg-black/75 backdrop-blur-md p-12 md:p-16 rounded-xl w-full max-w-[450px] border border-white/10 shadow-2xl animate-scale-in">
-        <h2 className="text-3xl font-bold text-white mb-8">Sign Up</h2>
+      <div className="relative z-10 bg-[#1e293b]/50 backdrop-blur-xl p-8 md:p-12 rounded-2xl w-full max-w-[450px] border border-white/10 shadow-2xl animate-scale-in">
+        <div className="text-center mb-8">
+            <Link to="/" className="inline-flex items-center gap-2 mb-6 group cursor-pointer">
+              <Sparkles className="h-8 w-8 text-violet-500 group-hover:rotate-12 transition-transform" />
+              <span className="text-3xl font-black tracking-tighter text-white drop-shadow-[0_0_10px_rgba(139,92,246,0.5)]">
+                YUME<span className="text-violet-400 font-light">TV</span>
+              </span>
+            </Link>
+            <h2 className="text-2xl font-bold text-white">Create Account</h2>
+            <p className="text-gray-400 text-sm mt-2">Join the community and start watching</p>
+        </div>
         
-        {error && <div className="bg-[#e87c03] text-white p-3 rounded text-sm mb-6 animate-fade-in font-medium">{error}</div>}
+        {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm mb-6 flex items-center justify-center animate-fade-in font-medium">
+                {error}
+            </div>
+        )}
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-           <div className="relative group">
-            <input
-              type="text"
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block px-4 pb-2.5 pt-5 w-full text-white bg-[#333] rounded-md focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-red-600 peer transition-all"
-              placeholder=" "
-              required
-            />
-            <label htmlFor="name" className="absolute text-gray-400 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4 peer-focus:text-gray-200">
-                Full Name
-            </label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+           <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Full Name</label>
+            <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-violet-400 transition-colors" />
+                <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="block w-full bg-[#0f172a] border border-gray-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
+                placeholder="John Doe"
+                required
+                />
+            </div>
           </div>
 
-          <div className="relative group">
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block px-4 pb-2.5 pt-5 w-full text-white bg-[#333] rounded-md focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-red-600 peer transition-all"
-              placeholder=" "
-              required
-            />
-            <label htmlFor="email" className="absolute text-gray-400 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4 peer-focus:text-gray-200">
-                Email address
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Email</label>
+            <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-violet-400 transition-colors" />
+                <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="block w-full bg-[#0f172a] border border-gray-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
+                placeholder="name@example.com"
+                required
+                />
+            </div>
           </div>
           
-          <div className="relative group">
-            <input
-              type="password"
-              id="password"
-              className="block px-4 pb-2.5 pt-5 w-full text-white bg-[#333] rounded-md focus:outline-none focus:bg-[#454545] border-b-2 border-transparent focus:border-red-600 peer transition-all"
-              placeholder=" "
-            />
-             <label htmlFor="password" className="absolute text-gray-400 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4 peer-focus:text-gray-200">
-                Password
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
+            <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-violet-400 transition-colors" />
+                <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="block w-full bg-[#0f172a] border border-gray-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
+                placeholder="Create a strong password"
+                required
+                />
+            </div>
           </div>
 
           <button 
             type="submit" 
             disabled={isLoading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-md transition-all duration-300 disabled:opacity-50 mt-6 shadow-lg shadow-black/40 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-xl transition-all duration-300 disabled:opacity-50 mt-4 shadow-lg shadow-violet-900/20 hover:shadow-violet-900/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            {isLoading ? 'Creating Account...' : 'Sign Up'}
+             {isLoading ? (
+               <div className="flex items-center justify-center">
+                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                   Creating Account...
+               </div>
+            ) : (
+                <>Sign Up <ArrowRight className="w-5 h-5" /></>
+            )}
           </button>
         </form>
 
-        <div className="mt-8 text-gray-400 text-sm">
-          <p>
-            Already have an account? <Link to="/login" className="text-white hover:underline font-medium ml-1">Sign in.</Link>
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            Already have an account? 
+            <Link to="/login" className="text-violet-400 hover:text-violet-300 font-bold ml-1 hover:underline transition-colors">
+                Sign in now
+            </Link>
           </p>
         </div>
       </div>
