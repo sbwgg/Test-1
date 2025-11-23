@@ -14,7 +14,7 @@ import Settings from './pages/Settings';
 import Community from './pages/Community';
 import PostDetail from './pages/PostDetail';
 import Profile from './pages/Profile';
-import { Wrench, AlertTriangle } from 'lucide-react';
+import { Wrench } from 'lucide-react';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }: React.PropsWithChildren<{ requireAdmin?: boolean }>) => {
@@ -81,15 +81,9 @@ const AppContent: React.FC = () => {
     <HashRouter>
       <div className="min-h-screen flex flex-col bg-[#020617] text-gray-100 font-sans selection:bg-violet-600 selection:text-white">
         
-        {/* Global Notification Banner */}
-        {settings.showNotification && (
-          <div className="bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-200 px-4 py-3 text-center text-sm font-medium flex items-center justify-center gap-3 relative z-[60] animate-fade-in">
-             <AlertTriangle className="w-4 h-4 text-yellow-500" />
-             <span>{settings.notificationMessage}</span>
-          </div>
-        )}
-
+        {/* Navbar handles the Notification Banner internally to ensure correct z-indexing */}
         <Navbar />
+        
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
