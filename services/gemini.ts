@@ -1,5 +1,3 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
 export interface MovieMetadata {
   description: string;
   genre: string[];
@@ -8,48 +6,16 @@ export interface MovieMetadata {
   duration: string;
 }
 
+// Mock implementation to replace AI functionality
 export const generateMovieMetadata = async (title: string): Promise<MovieMetadata> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 800));
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Generate cinematic metadata for a movie titled "${title}".`,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          description: {
-            type: Type.STRING,
-            description: "A captivating plot summary.",
-          },
-          genre: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "List of genres.",
-          },
-          rating: {
-            type: Type.STRING,
-            description: "MPAA rating.",
-          },
-          year: {
-            type: Type.INTEGER,
-            description: "Release year.",
-          },
-          duration: {
-            type: Type.STRING,
-            description: "Duration like '2h 15m'.",
-          },
-        },
-        required: ["description", "genre", "rating", "year", "duration"],
-      },
-    },
-  });
-
-  const text = response.text;
-  if (!text) {
-    throw new Error("Failed to generate metadata");
-  }
-
-  return JSON.parse(text) as MovieMetadata;
+  return {
+    description: `This is a placeholder description for "${title}". AI generation is disabled. Please update this field with the actual movie plot.`,
+    genre: ["Drama", "Action"],
+    rating: "PG-13",
+    year: new Date().getFullYear(),
+    duration: "1h 55m"
+  };
 };
