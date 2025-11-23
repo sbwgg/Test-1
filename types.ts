@@ -23,6 +23,11 @@ export interface Movie {
   rating: string; // e.g., PG-13, R
   isFeatured?: boolean;
   views: number;
+  
+  // New Advanced Fields
+  type: 'movie' | 'series';
+  audioLanguages: string[];
+  subtitleLanguages: string[];
 }
 
 export interface AuthState {

@@ -61,5 +61,20 @@
 }
 
 body {
-  @apply bg-[#141414] text-white overflow-x-hidden selection:bg-red-600 selection:text-white;
+  @apply bg-[#020617] text-white overflow-x-hidden selection:bg-violet-600 selection:text-white;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #020617; 
+}
+::-webkit-scrollbar-thumb {
+  background: #4c1d95; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6d28d9; 
 }

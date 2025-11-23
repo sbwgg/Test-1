@@ -41,7 +41,27 @@ const getDb = () => {
           duration: '2h 14m',
           rating: 'PG-13',
           isFeatured: true,
-          views: 1200
+          views: 1200,
+          type: 'movie',
+          audioLanguages: ['English', 'Japanese'],
+          subtitleLanguages: ['English', 'Spanish', 'French']
+        },
+        {
+          id: '2',
+          title: 'Neon Nights',
+          description: 'A cyberpunk detective story set in a rain-slicked Tokyo where memories can be bought and sold.',
+          thumbnailUrl: 'https://picsum.photos/seed/cyber/300/450',
+          coverUrl: 'https://picsum.photos/seed/cyber/1920/800',
+          videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+          genre: ['Thriller', 'Sci-Fi'],
+          year: 2023,
+          duration: '1h 45m',
+          rating: 'R',
+          isFeatured: false,
+          views: 850,
+          type: 'series',
+          audioLanguages: ['English'],
+          subtitleLanguages: ['English']
         }
       ]
     };

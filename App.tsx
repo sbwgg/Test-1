@@ -7,12 +7,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Watch from './pages/Watch';
 import AdminDashboard from './pages/Admin';
+import AdvancedSearch from './pages/AdvancedSearch';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center bg-[#020617] text-white">Loading...</div>;
   
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -29,11 +30,12 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <HashRouter>
-        <div className="min-h-screen flex flex-col bg-[#141414] text-gray-100 font-sans">
+        <div className="min-h-screen flex flex-col bg-[#020617] text-gray-100 font-sans selection:bg-violet-600 selection:text-white">
           <Navbar />
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/search" element={<AdvancedSearch />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
@@ -50,7 +52,7 @@ const App: React.FC = () => {
               } />
             </Routes>
           </main>
-          <footer className="py-8 text-center text-gray-500 text-sm border-t border-gray-800 mt-12">
+          <footer className="py-8 text-center text-gray-500 text-sm border-t border-white/5 mt-12 bg-[#020617]">
             <p>© 2024 YumeTV. All rights reserved.</p>
           </footer>
         </div>
