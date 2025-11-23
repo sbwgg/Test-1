@@ -44,14 +44,17 @@ const Home: React.FC = () => {
     <div className="pb-20 bg-[#020617] overflow-hidden">
       <Hero movie={featured} />
       
-      <div className="relative z-10 space-y-12 md:space-y-20 -mt-24 md:-mt-32 px-4 md:px-12 pb-12">
+      <div className="relative z-10 space-y-12 md:space-y-16 -mt-24 md:-mt-32 px-4 md:px-12 pb-12">
         {/* Trending Section */}
-        <div className="space-y-3 group">
+        <div className="space-y-4 group">
           <h3 className="text-xl md:text-2xl font-bold text-gray-200 group-hover:text-white transition-colors duration-300 pl-2 border-l-4 border-transparent group-hover:border-violet-600">Trending Now</h3>
           <div className="relative group/slider">
-             <div className="flex space-x-4 overflow-x-auto hide-scrollbar py-8 px-2 -mx-2 mask-linear-fade">
+             {/* Updated padding and alignment for taller cards */}
+             <div className="flex space-x-6 overflow-x-auto hide-scrollbar py-4 px-2 -mx-2 mask-linear-fade items-start">
                 {movies.map(movie => (
-                  <MovieCard key={movie.id} movie={movie} />
+                  <div key={movie.id} className="flex-shrink-0">
+                    <MovieCard movie={movie} />
+                  </div>
                 ))}
              </div>
           </div>
@@ -59,14 +62,16 @@ const Home: React.FC = () => {
 
         {/* Genre Sections */}
         {genres.slice(0, 4).map(genre => (
-          <div key={genre} className="space-y-3 group">
+          <div key={genre} className="space-y-4 group">
              <h3 className="text-xl md:text-2xl font-bold text-gray-200 group-hover:text-white transition-colors duration-300 pl-2 border-l-4 border-transparent group-hover:border-violet-600">{genre} Movies</h3>
              <div className="relative group/slider">
-                <div className="flex space-x-4 overflow-x-auto hide-scrollbar py-8 px-2 -mx-2">
+                <div className="flex space-x-6 overflow-x-auto hide-scrollbar py-4 px-2 -mx-2 mask-linear-fade items-start">
                    {movies
                      .filter(m => m.genre.includes(genre))
                      .map(movie => (
-                       <MovieCard key={movie.id} movie={movie} />
+                       <div key={movie.id} className="flex-shrink-0">
+                         <MovieCard movie={movie} />
+                       </div>
                    ))}
                 </div>
              </div>

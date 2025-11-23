@@ -1,82 +1,104 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Plus, ThumbsUp, ChevronDown } from 'lucide-react';
+import { Play, Mic, Type, Film, Tv } from 'lucide-react';
 import { Movie } from '../types';
 
 interface MovieCardProps {
   movie: Movie;
 }
 
+const getFlagEmoji = (language: string) => {
+  const map: { [key: string]: string } = {
+    'English': '🇺🇸',
+    'Japanese': '🇯🇵',
+    'Spanish': '🇪🇸',
+    'French': '🇫🇷',
+    'German': '🇩🇪',
+    'Italian': '🇮🇹',
+    'Korean': '🇰🇷',
+    'Chinese': '🇨🇳',
+    'Russian': '🇷🇺',
+    'Portuguese': '🇧🇷',
+    'Hindi': '🇮🇳',
+    'Thai': '🇹🇭',
+  };
+  return map[language] || '🏳️';
+};
+
 const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   return (
-    // 'group' is strictly scoped to this specific card container
-    <div className="group relative w-full h-auto aspect-[2/3] cursor-pointer perspective-1000 z-0 hover:z-50">
+    <Link to={`/watch/${movie.id}`} className="group flex flex-col w-40 md:w-48 lg:w-52 cursor-pointer transition-transform duration-300 hover:-translate-y-2">
       
-      {/* Base Poster (Static) */}
-      <img
-        src={movie.thumbnailUrl}
-        alt={movie.title}
-        className="rounded-lg w-full h-full object-cover shadow-lg transition-all duration-300 group-hover:opacity-0"
-        loading="lazy"
-      />
-
-      {/* Hover Popup Card */}
-      {/* Positioned absolutely, hidden by default, visible on group hover */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] bg-[#1e293b] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-105 transition-all duration-300 ease-out delay-300 ring-1 ring-white/10 z-50">
+      {/* 1. Poster Container - Fixed 2:3 Aspect Ratio */}
+      <div className="relative w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg mb-3 ring-1 ring-white/10 bg-[#1e293b]">
+        <img
+          src={movie.thumbnailUrl}
+          alt={movie.title}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 group-hover:opacity-80"
+          loading="lazy"
+        />
         
-        {/* Preview Image Area */}
-        <div className="relative h-48 w-full">
-             <img
-                src={movie.coverUrl || movie.thumbnailUrl}
-                alt={movie.title}
-                className="object-cover w-full h-full"
-            />
-            {/* Dark gradient for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1e293b] via-transparent to-transparent"></div>
-            <div className="absolute bottom-2 left-3 flex gap-1">
-                 {movie.type === 'series' && <span className="text-[10px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">SERIES</span>}
-                 <span className="text-[10px] font-bold bg-white/20 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">HD</span>
-            </div>
+        {/* Hover Overlay with Play Button */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
+          <div className="bg-white/20 p-3 rounded-full backdrop-blur-md border border-white/30 shadow-[0_0_20px_rgba(139,92,246,0.4)] transform scale-50 group-hover:scale-100 transition-transform duration-300">
+            <Play className="w-6 h-6 text-white fill-white" />
+          </div>
         </div>
 
-        {/* Action Buttons & Info */}
-        <div className="p-4 space-y-3 bg-[#1e293b]">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    <Link to={`/watch/${movie.id}`} className="bg-white rounded-full p-2.5 hover:bg-violet-400 hover:text-white transition-colors shadow-[0_0_10px_rgba(255,255,255,0.2)] group/btn">
-                        <Play className="h-4 w-4 text-black fill-current group-hover/btn:scale-110 transition-transform group-hover/btn:text-white group-hover/btn:fill-white" />
-                    </Link>
-                    <button className="border-2 border-gray-500 rounded-full p-2 hover:border-violet-400 text-gray-400 hover:text-white transition-colors bg-[#0f172a]/50">
-                        <Plus className="h-4 w-4" />
-                    </button>
-                    <button className="border-2 border-gray-500 rounded-full p-2 hover:border-violet-400 text-gray-400 hover:text-white transition-colors bg-[#0f172a]/50">
-                        <ThumbsUp className="h-4 w-4" />
-                    </button>
-                </div>
-                <Link to={`/watch/${movie.id}`} className="border-2 border-gray-500 rounded-full p-2 hover:border-white text-gray-400 hover:text-white ml-auto transition-colors bg-[#0f172a]/50">
-                    <ChevronDown className="h-4 w-4" />
-                </Link>
-            </div>
-
-            <div>
-                <h4 className="text-white font-bold text-base mb-1 line-clamp-1">{movie.title}</h4>
-                <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-green-400 font-bold text-xs">98% Match</span>
-                    <span className="border border-gray-600 px-1.5 py-0.5 rounded-[2px] text-[10px] text-gray-300 uppercase">{movie.rating}</span>
-                    <span className="text-gray-400 text-xs">{movie.duration}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {movie.genre.slice(0, 3).map((g, i) => (
-                        <span key={i} className="text-[10px] text-gray-400 flex items-center">
-                            {i > 0 && <span className="text-gray-600 mr-2 text-[8px]">•</span>}
-                            {g}
-                        </span>
-                    ))}
-                </div>
-            </div>
+        {/* Rating Badge (Top Right) */}
+        <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md border border-white/10 px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-200">
+          {movie.rating}
         </div>
       </div>
-    </div>
+
+      {/* 2. Metadata Section (Below Poster) */}
+      <div className="px-1 space-y-1.5">
+        
+        {/* Title */}
+        <h3 className="text-white font-bold text-sm leading-tight truncate group-hover:text-violet-400 transition-colors">
+          {movie.title}
+        </h3>
+
+        {/* Year and Type Row */}
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span className="font-medium">{movie.year}</span>
+          <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+             {movie.type === 'series' ? <Tv className="w-3 h-3" /> : <Film className="w-3 h-3" />}
+             <span className="uppercase text-[9px] font-bold tracking-wider">
+               {movie.type === 'series' ? 'TV' : 'Movie'}
+             </span>
+          </div>
+        </div>
+
+        {/* Language Flags Row */}
+        <div className="flex items-center gap-3 pt-1 border-t border-gray-800/50 mt-1">
+          {/* Audio Flags */}
+          <div className="flex items-center gap-1" title="Audio Languages">
+             <Mic className="w-3 h-3 text-gray-500" />
+             <div className="flex -space-x-1">
+                {(movie.audioLanguages || ['English']).slice(0, 3).map((lang, i) => (
+                  <span key={i} className="text-sm grayscale-[30%] hover:grayscale-0 transition-all z-0 hover:z-10 transform hover:scale-125 cursor-help" title={lang}>
+                    {getFlagEmoji(lang)}
+                  </span>
+                ))}
+             </div>
+          </div>
+
+          {/* Subtitle Flags */}
+          <div className="flex items-center gap-1" title="Subtitle Languages">
+             <Type className="w-3 h-3 text-gray-500" />
+             <div className="flex -space-x-1">
+                {(movie.subtitleLanguages || []).slice(0, 2).map((lang, i) => (
+                  <span key={i} className="text-sm grayscale-[30%] hover:grayscale-0 transition-all z-0 hover:z-10 transform hover:scale-125 cursor-help" title={lang}>
+                    {getFlagEmoji(lang)}
+                  </span>
+                ))}
+             </div>
+          </div>
+        </div>
+
+      </div>
+    </Link>
   );
 };
 
