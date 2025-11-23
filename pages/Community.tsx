@@ -225,7 +225,8 @@ const Community: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                ))
+                    );
+                })
              ) : (
                 <div className="bg-[#1e293b]/30 rounded-2xl p-12 text-center border border-white/5">
                     <p className="text-gray-400 text-lg">No posts found.</p>
