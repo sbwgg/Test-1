@@ -8,6 +8,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  avatarUrl?: string; // New field for PFP
 }
 
 export interface Movie {
@@ -24,7 +25,7 @@ export interface Movie {
   isFeatured?: boolean;
   views: number;
   
-  // New Advanced Fields
+  // Advanced Fields
   type: 'movie' | 'series';
   audioLanguages: string[];
   subtitleLanguages: string[];

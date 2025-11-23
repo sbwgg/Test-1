@@ -116,14 +116,15 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       name,
       password: hashedPassword,
-      role
+      role,
+      avatarUrl: ''
     };
 
     db.users.push(newUser);
     saveDb(db);
 
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name }, JWT_SECRET);
-    res.json({ token, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role } });
+    res.json({ token, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role, avatarUrl: newUser.avatarUrl } });
   } catch (error) {
     res.status(500).json({ message: "Error registering user" });
   }
@@ -141,7 +142,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!validPass) return res.status(400).json({ message: "Invalid password" });
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl } });
   } catch (error) {
     res.status(500).json({ message: "Error logging in" });
   }
@@ -173,11 +174,79 @@ app.post('/api/movies', authenticateToken, requireAdmin, (req, res) => {
   res.json(newMovie);
 });
 
+app.put('/api/movies/:id', authenticateToken, requireAdmin, (req, res) => {
+    const db = getDb();
+    const index = db.movies.findIndex(m => m.id === req.params.id);
+    if (index === -1) return res.status(404).json({ message: "Movie not found" });
+
+    // Preserve views and id
+    const updatedMovie = { 
+        ...db.movies[index], 
+        ...req.body, 
+        id: req.params.id, 
+        views: db.movies[index].views 
+    };
+    
+    db.movies[index] = updatedMovie;
+    saveDb(db);
+    res.json(updatedMovie);
+});
+
 app.delete('/api/movies/:id', authenticateToken, requireAdmin, (req, res) => {
   const db = getDb();
   db.movies = db.movies.filter(m => m.id !== req.params.id);
   saveDb(db);
   res.json({ success: true });
+});
+
+// 3. User Management (Admin Only)
+
+app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
+    const db = getDb();
+    // Return users without passwords
+    const safeUsers = db.users.map(({ password, ...user }) => user);
+    res.json(safeUsers);
+});
+
+app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const db = getDb();
+        const index = db.users.findIndex(u => u.id === req.params.id);
+        if (index === -1) return res.status(404).json({ message: "User not found" });
+
+        const { name, email, role, avatarUrl, password } = req.body;
+        
+        // Update basic info
+        db.users[index].name = name || db.users[index].name;
+        db.users[index].email = email || db.users[index].email;
+        db.users[index].role = role || db.users[index].role;
+        db.users[index].avatarUrl = avatarUrl || db.users[index].avatarUrl;
+
+        // Update password if provided
+        if (password && password.trim() !== "") {
+            db.users[index].password = await bcrypt.hash(password, 10);
+        }
+
+        saveDb(db);
+        
+        // Return safe user
+        const { password: _, ...safeUser } = db.users[index];
+        res.json(safeUser);
+    } catch (e) {
+        res.status(500).json({ message: "Failed to update user" });
+    }
+});
+
+app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
+    const db = getDb();
+    // Prevent deleting yourself (optional safety check)
+    if (req.params.id === req.user.id) {
+        return res.status(400).json({ message: "Cannot delete your own admin account" });
+    }
+
+    db.users = db.users.filter(u => u.id !== req.params.id);
+    saveDb(db);
+    res.json({ success: true });
 });
 
 // Handle SPA routing - Send all unhandled requests to index.html
