@@ -72,8 +72,8 @@ export interface Post {
 export interface AuthState {
   user: User | null;
   loading: boolean;
-  login: (email: string) => Promise<void>;
-  register: (email: string, name: string) => Promise<void>;
+  login: (email: string, password?: string) => Promise<void>;
+  register: (email: string, name: string, password?: string) => Promise<void>;
   updateProfile: (data: Partial<User> & { password?: string }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
