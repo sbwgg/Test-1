@@ -1,15 +1,35 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Info } from 'lucide-react';
+import { Play, Info, Plus, Check } from 'lucide-react';
 import { Movie } from '../types';
 import MovieDetailsModal from './MovieDetailsModal';
+import { useAuth } from '../services/authContext';
+import { db } from '../services/db';
 
 interface HeroProps {
   movie: Movie;
 }
 
 const Hero: React.FC<HeroProps> = ({ movie }) => {
+  const { user, refreshUser } = useAuth();
   const [showModal, setShowModal] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+
+  const isInWatchlist = user?.watchlist?.includes(movie.id);
+
+  const toggleWatchlist = async () => {
+      if(!user) return alert("Please login to add to watchlist");
+      setLoadingList(true);
+      try {
+          await db.toggleWatchlist(movie.id);
+          await refreshUser();
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setLoadingList(false);
+      }
+  };
 
   return (
     <>
@@ -59,6 +79,14 @@ const Hero: React.FC<HeroProps> = ({ movie }) => {
                 <Play className="h-6 w-6 mr-3 fill-black" />
                 Play Now
             </Link>
+            <button 
+                onClick={toggleWatchlist}
+                disabled={loadingList}
+                className={`flex items-center px-6 py-3.5 rounded-full font-bold text-lg transition-all duration-300 transform hover:scale-105 backdrop-blur-md border ${isInWatchlist ? 'bg-green-600/20 border-green-500 text-green-400' : 'bg-gray-500/30 text-white border-white/20 hover:bg-gray-500/40'}`}
+            >
+                {isInWatchlist ? <Check className="h-6 w-6 mr-2" /> : <Plus className="h-6 w-6 mr-2" />}
+                {isInWatchlist ? 'Added' : 'My List'}
+            </button>
             <button 
                 onClick={() => setShowModal(true)}
                 className="flex items-center bg-gray-500/30 text-white px-8 py-3.5 rounded-full font-bold text-lg hover:bg-gray-500/40 transition-all duration-300 transform hover:scale-105 backdrop-blur-md border border-white/20 shadow-lg"

@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
@@ -19,9 +20,7 @@ const DB_FILE = path.join(__dirname, 'data.json');
 
 // Middleware
 app.use(cors());
-// Increase limit for base64 image uploads
 app.use(bodyParser.json({ limit: '50mb' }));
-// Serve static files from the React build directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // --- DATABASE HELPERS ---
@@ -29,65 +28,15 @@ const getDb = () => {
   if (!fs.existsSync(DB_FILE)) {
     const seed = {
       users: [],
-      posts: [
-        {
-          id: '1',
-          userId: 'admin',
-          authorName: 'YumeTV Admin',
-          authorRole: 'ADMIN',
-          title: 'Welcome to the Community!',
-          content: 'This is the start of our new community section. Feel free to discuss your favorite movies and shows here.',
-          category: 'Updates',
-          createdAt: new Date().toISOString(),
-          isPinned: true,
-          likes: 10
-        }
-      ],
-      movies: [
-        {
-          id: '1',
-          title: 'Cosmic Frontiers',
-          description: 'In the year 2150, humanity stands on the brink of interstellar expansion. A lone pilot discovers a wormhole that leads to a galaxy governed by ancient machines.',
-          thumbnailUrl: 'https://picsum.photos/seed/space1/300/450',
-          coverUrl: 'https://picsum.photos/seed/space1/1920/800',
-          videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-          genre: ['Sci-Fi', 'Adventure'],
-          year: 2024,
-          duration: '2h 14m',
-          rating: 'PG-13',
-          isFeatured: true,
-          views: 1200,
-          type: 'movie',
-          audioLanguages: ['English', 'Japanese'],
-          subtitleLanguages: ['English', 'Spanish', 'French']
-        },
-        {
-          id: '2',
-          title: 'Neon Nights',
-          description: 'A cyberpunk detective story set in a rain-slicked Tokyo where memories can be bought and sold.',
-          thumbnailUrl: 'https://picsum.photos/seed/cyber/300/450',
-          coverUrl: 'https://picsum.photos/seed/cyber/1920/800',
-          videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-          genre: ['Thriller', 'Sci-Fi'],
-          year: 2023,
-          duration: '1h 45m',
-          rating: 'R',
-          isFeatured: false,
-          views: 850,
-          type: 'series',
-          audioLanguages: ['English'],
-          subtitleLanguages: ['English']
-        }
-      ]
+      posts: [],
+      movies: []
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2));
     return seed;
   }
   const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  if (!db.posts) {
-    db.posts = [];
-    saveDb(db);
-  }
+  // Migration checks
+  if (!db.posts) db.posts = [];
   return db;
 };
 
@@ -127,8 +76,6 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password || 'password', 10);
-    
-    // First user is always ADMIN, others are USER
     const role = db.users.length === 0 ? 'ADMIN' : 'USER';
 
     const newUser = {
@@ -137,14 +84,17 @@ app.post('/api/auth/register', async (req, res) => {
       name,
       password: hashedPassword,
       role,
-      avatarUrl: ''
+      avatarUrl: '',
+      watchlist: [],
+      isWatchlistPublic: false,
+      createdAt: new Date().toISOString()
     };
 
     db.users.push(newUser);
     saveDb(db);
 
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name }, JWT_SECRET);
-    res.json({ token, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role, avatarUrl: newUser.avatarUrl } });
+    res.json({ token, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role, avatarUrl: newUser.avatarUrl, watchlist: [], isWatchlistPublic: false } });
   } catch (error) {
     res.status(500).json({ message: "Error registering user" });
   }
@@ -162,10 +112,20 @@ app.post('/api/auth/login', async (req, res) => {
     if (!validPass) return res.status(400).json({ message: "Invalid password" });
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl } });
+    // Return sanitized user
+    const { password: _, ...safeUser } = user;
+    res.json({ token, user: safeUser });
   } catch (error) {
     res.status(500).json({ message: "Error logging in" });
   }
+});
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    const db = getDb();
+    const user = db.users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({message: "User not found"});
+    const { password: _, ...safeUser } = user;
+    res.json(safeUser);
 });
 
 // Update Profile (Self)
@@ -175,12 +135,13 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     const index = db.users.findIndex(u => u.id === req.user.id);
     if (index === -1) return res.status(404).json({ message: "User not found" });
 
-    const { name, email, password, avatarUrl } = req.body;
+    const { name, email, password, avatarUrl, isWatchlistPublic } = req.body;
     const user = db.users[index];
 
     if (name) user.name = name;
     if (email) user.email = email;
     if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    if (isWatchlistPublic !== undefined) user.isWatchlistPublic = isWatchlistPublic;
     
     if (password && password.trim() !== "") {
       user.password = await bcrypt.hash(password, 10);
@@ -197,6 +158,68 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     console.error(e);
     res.status(500).json({ message: "Failed to update profile" });
   }
+});
+
+// Public Profile Fetch
+app.get('/api/users/profile/:id', (req, res) => {
+    const db = getDb();
+    const user = db.users.find(u => u.id === req.params.id);
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Identify requestor (optional, but needed to show private watchlist if it's 'me')
+    const authHeader = req.headers['authorization'];
+    let requestorId = null;
+    if (authHeader) {
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded = jwt.verify(token, JWT_SECRET);
+            requestorId = decoded.id;
+        } catch(e) {}
+    }
+
+    const isOwnProfile = requestorId === user.id;
+    const showWatchlist = user.isWatchlistPublic || isOwnProfile;
+
+    const userPosts = db.posts ? db.posts.filter(p => p.userId === user.id) : [];
+
+    const profileData = {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+        isWatchlistPublic: user.isWatchlistPublic,
+        watchlist: showWatchlist ? user.watchlist || [] : [],
+        stats: {
+            postsCount: userPosts.length,
+            commentsCount: 0 // Simplification
+        },
+        activity: userPosts.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    };
+
+    res.json(profileData);
+});
+
+// Watchlist Toggle
+app.put('/api/user/watchlist/:movieId', authenticateToken, (req, res) => {
+    const db = getDb();
+    const userIndex = db.users.findIndex(u => u.id === req.user.id);
+    if (userIndex === -1) return res.sendStatus(404);
+
+    const user = db.users[userIndex];
+    if (!user.watchlist) user.watchlist = [];
+
+    const movieId = req.params.movieId;
+    if (user.watchlist.includes(movieId)) {
+        user.watchlist = user.watchlist.filter(id => id !== movieId);
+    } else {
+        user.watchlist.push(movieId);
+    }
+
+    db.users[userIndex] = user;
+    saveDb(db);
+    res.json(user.watchlist);
 });
 
 
@@ -216,11 +239,8 @@ app.get('/api/movies/:id', (req, res) => {
 app.post('/api/movies', authenticateToken, requireAdmin, (req, res) => {
   const db = getDb();
   const newMovie = req.body;
-  
-  // Ensure ID is unique
   newMovie.id = Date.now().toString();
   newMovie.views = 0;
-  
   db.movies.unshift(newMovie);
   saveDb(db);
   res.json(newMovie);
@@ -230,15 +250,7 @@ app.put('/api/movies/:id', authenticateToken, requireAdmin, (req, res) => {
     const db = getDb();
     const index = db.movies.findIndex(m => m.id === req.params.id);
     if (index === -1) return res.status(404).json({ message: "Movie not found" });
-
-    // Preserve views and id
-    const updatedMovie = { 
-        ...db.movies[index], 
-        ...req.body, 
-        id: req.params.id, 
-        views: db.movies[index].views 
-    };
-    
+    const updatedMovie = { ...db.movies[index], ...req.body, id: req.params.id, views: db.movies[index].views };
     db.movies[index] = updatedMovie;
     saveDb(db);
     res.json(updatedMovie);
@@ -251,11 +263,9 @@ app.delete('/api/movies/:id', authenticateToken, requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-// 3. User Management (Admin Only)
-
+// 3. User Mgmt
 app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
     const db = getDb();
-    // Return users without passwords
     const safeUsers = db.users.map(({ password, ...user }) => user);
     res.json(safeUsers);
 });
@@ -265,23 +275,15 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
         const db = getDb();
         const index = db.users.findIndex(u => u.id === req.params.id);
         if (index === -1) return res.status(404).json({ message: "User not found" });
-
         const { name, email, role, avatarUrl, password } = req.body;
-        
-        // Update basic info
         db.users[index].name = name || db.users[index].name;
         db.users[index].email = email || db.users[index].email;
         db.users[index].role = role || db.users[index].role;
         db.users[index].avatarUrl = avatarUrl !== undefined ? avatarUrl : db.users[index].avatarUrl;
-
-        // Update password if provided
         if (password && password.trim() !== "") {
             db.users[index].password = await bcrypt.hash(password, 10);
         }
-
         saveDb(db);
-        
-        // Return safe user
         const { password: _, ...safeUser } = db.users[index];
         res.json(safeUser);
     } catch (e) {
@@ -291,21 +293,16 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
 
 app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
     const db = getDb();
-    // Prevent deleting yourself (optional safety check)
-    if (req.params.id === req.user.id) {
-        return res.status(400).json({ message: "Cannot delete your own admin account" });
-    }
-
+    if (req.params.id === req.user.id) return res.status(400).json({ message: "Cannot delete your own admin account" });
     db.users = db.users.filter(u => u.id !== req.params.id);
     saveDb(db);
     res.json({ success: true });
 });
 
-// 4. Community Posts
+// 4. Community Posts & Comments
 
 app.get('/api/posts', (req, res) => {
     const db = getDb();
-    // Sort pinned first, then newest
     const posts = db.posts || [];
     posts.sort((a, b) => {
         if (a.isPinned === b.isPinned) {
@@ -316,11 +313,16 @@ app.get('/api/posts', (req, res) => {
     res.json(posts);
 });
 
+app.get('/api/posts/:id', (req, res) => {
+    const db = getDb();
+    const post = db.posts.find(p => p.id === req.params.id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    res.json(post);
+});
+
 app.post('/api/posts', authenticateToken, (req, res) => {
     const db = getDb();
     const { title, content, category } = req.body;
-    
-    // Find current user details
     const user = db.users.find(u => u.id === req.user.id);
 
     const newPost = {
@@ -334,7 +336,9 @@ app.post('/api/posts', authenticateToken, (req, res) => {
         category,
         createdAt: new Date().toISOString(),
         isPinned: false,
-        likes: 0
+        likes: [],
+        dislikes: [],
+        comments: []
     };
 
     if (!db.posts) db.posts = [];
@@ -347,14 +351,8 @@ app.delete('/api/posts/:id', authenticateToken, (req, res) => {
     const db = getDb();
     const index = db.posts.findIndex(p => p.id === req.params.id);
     if (index === -1) return res.status(404).json({ message: "Post not found" });
-
     const post = db.posts[index];
-    
-    // Allow delete if Admin OR Owner
-    if (req.user.role !== 'ADMIN' && post.userId !== req.user.id) {
-        return res.status(403).json({ message: "Unauthorized" });
-    }
-
+    if (req.user.role !== 'ADMIN' && post.userId !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
     db.posts.splice(index, 1);
     saveDb(db);
     res.json({ success: true });
@@ -364,29 +362,124 @@ app.put('/api/posts/:id/pin', authenticateToken, requireAdmin, (req, res) => {
     const db = getDb();
     const index = db.posts.findIndex(p => p.id === req.params.id);
     if (index === -1) return res.status(404).json({ message: "Post not found" });
-
     db.posts[index].isPinned = !db.posts[index].isPinned;
     saveDb(db);
     res.json(db.posts[index]);
 });
 
-// Handle SPA routing - Send all unhandled requests to index.html
+// Voting Logic
+app.post('/api/vote', authenticateToken, (req, res) => {
+    const { targetId, targetType, voteType } = req.body; // targetType: 'post' | 'comment', voteType: 'like' | 'dislike'
+    const db = getDb();
+    const userId = req.user.id;
+    
+    // Helper to process vote on an object (post or comment)
+    const processVote = (obj) => {
+        if (!obj.likes) obj.likes = [];
+        if (!obj.dislikes) obj.dislikes = [];
+
+        // Remove existing votes
+        obj.likes = obj.likes.filter(id => id !== userId);
+        obj.dislikes = obj.dislikes.filter(id => id !== userId);
+
+        if (voteType === 'like') obj.likes.push(userId);
+        if (voteType === 'dislike') obj.dislikes.push(userId);
+    };
+
+    if (targetType === 'post') {
+        const post = db.posts.find(p => p.id === targetId);
+        if (post) {
+            processVote(post);
+            saveDb(db);
+            return res.json(post);
+        }
+    } else if (targetType === 'comment') {
+        // Find comment recursively
+        const findComment = (comments) => {
+            for (let c of comments) {
+                if (c.id === targetId) return c;
+                if (c.replies) {
+                    const found = findComment(c.replies);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        // We need to iterate all posts to find the comment (or pass postId)
+        // For simplicity, let's assume postId is passed or we search all
+        for (let post of db.posts) {
+             const comment = findComment(post.comments || []);
+             if (comment) {
+                 processVote(comment);
+                 saveDb(db);
+                 // Return the post to update whole view, or just comment
+                 return res.json(post); 
+             }
+        }
+    }
+    
+    res.status(404).json({ message: "Target not found" });
+});
+
+// Commenting Logic
+app.post('/api/posts/:id/comments', authenticateToken, (req, res) => {
+    const db = getDb();
+    const postIndex = db.posts.findIndex(p => p.id === req.params.id);
+    if (postIndex === -1) return res.status(404).json({ message: "Post not found" });
+
+    const { content, parentCommentId } = req.body;
+    const user = db.users.find(u => u.id === req.user.id);
+
+    const newComment = {
+        id: Date.now().toString(),
+        postId: req.params.id,
+        authorId: user.id,
+        authorName: user.name,
+        authorAvatar: user.avatarUrl,
+        content,
+        createdAt: new Date().toISOString(),
+        likes: [],
+        dislikes: [],
+        replies: []
+    };
+
+    if (!parentCommentId) {
+        // Top level comment
+        if (!db.posts[postIndex].comments) db.posts[postIndex].comments = [];
+        db.posts[postIndex].comments.push(newComment);
+    } else {
+        // Nested reply
+        const findAndReply = (comments) => {
+            for (let c of comments) {
+                if (c.id === parentCommentId) {
+                    if (!c.replies) c.replies = [];
+                    c.replies.push(newComment);
+                    return true;
+                }
+                if (c.replies && findAndReply(c.replies)) return true;
+            }
+            return false;
+        };
+        findAndReply(db.posts[postIndex].comments || []);
+    }
+
+    saveDb(db);
+    res.json(db.posts[postIndex]);
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// --- SERVER STARTUP WITH PORT RETRY ---
 const startServer = (port) => {
   const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
   });
-
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.warn(`Port ${port} is busy. Trying port ${port + 1}...`);
       startServer(port + 1);
-    } else {
-      console.error('Server error:', err);
     }
   });
 };

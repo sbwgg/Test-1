@@ -1,3 +1,4 @@
+
 import { Movie, User, Post } from '../types';
 
 const API_URL = '/api/movies';
@@ -72,6 +73,14 @@ export const db = {
     return await res.json();
   },
 
+  getPublicProfile: async (id: string): Promise<any> => {
+      const res = await fetch(`${USERS_URL}/profile/${id}`, {
+          headers: getHeaders() // Send headers to check if it's "me"
+      });
+      if(!res.ok) throw new Error("Profile not found");
+      return await res.json();
+  },
+
   updateUser: async (id: string, data: Partial<User> & { password?: string }): Promise<void> => {
     const res = await fetch(`${USERS_URL}/${id}`, {
         method: 'PUT',
@@ -103,6 +112,15 @@ export const db = {
     }
   },
 
+  toggleWatchlist: async (movieId: string): Promise<string[]> => {
+      const res = await fetch(`/api/user/watchlist/${movieId}`, {
+          method: 'PUT',
+          headers: getHeaders()
+      });
+      if(!res.ok) throw new Error("Failed to update watchlist");
+      return await res.json();
+  },
+
   // --- COMMUNITY POSTS ---
   getPosts: async (): Promise<Post[]> => {
     try {
@@ -113,6 +131,12 @@ export const db = {
         console.error(e);
         return [];
     }
+  },
+
+  getPostById: async (id: string): Promise<Post> => {
+      const res = await fetch(`${POSTS_URL}/${id}`);
+      if (!res.ok) throw new Error("Post not found");
+      return await res.json();
   },
 
   createPost: async (post: { title: string, content: string, category: string }): Promise<Post> => {
@@ -139,5 +163,25 @@ export const db = {
           headers: getHeaders()
       });
       if (!res.ok) throw new Error('Failed to pin/unpin post');
+  },
+
+  vote: async (targetId: string, targetType: 'post' | 'comment', voteType: 'like' | 'dislike'): Promise<Post> => {
+      const res = await fetch(`/api/vote`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ targetId, targetType, voteType })
+      });
+      if(!res.ok) throw new Error("Vote failed");
+      return await res.json();
+  },
+
+  addComment: async (postId: string, content: string, parentCommentId?: string): Promise<Post> => {
+      const res = await fetch(`${POSTS_URL}/${postId}/comments`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ content, parentCommentId })
+      });
+      if(!res.ok) throw new Error("Failed to comment");
+      return await res.json();
   }
 };

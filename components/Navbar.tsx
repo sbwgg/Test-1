@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
-import { Search, Bell, LogOut, ShieldCheck, Menu, X, ChevronDown, User as UserIcon, Sparkles, Settings, Users } from 'lucide-react';
+import { Search, Bell, LogOut, ShieldCheck, Menu, X, ChevronDown, User as UserIcon, Sparkles, Settings, Users, Film } from 'lucide-react';
 import { UserRole } from '../types';
 
 const Navbar: React.FC = () => {
@@ -94,6 +95,9 @@ const Navbar: React.FC = () => {
                       <p className="text-sm text-white font-semibold">{user.name}</p>
                       <p className="text-xs text-gray-400 truncate">{user.email}</p>
                     </div>
+                    <Link to={`/profile/${user.id}`} className="flex items-center px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 hover:text-white rounded-md transition-colors">
+                      <Film className="h-4 w-4 mr-3" /> My Profile
+                    </Link>
                     {user.role === 'ADMIN' && (
                       <Link to="/admin" className="flex items-center px-4 py-2.5 text-sm text-gray-200 hover:bg-violet-600/20 hover:text-violet-200 rounded-md transition-colors">
                         <ShieldCheck className="h-4 w-4 mr-3 text-violet-400" /> Admin Dashboard
@@ -149,6 +153,9 @@ const Navbar: React.FC = () => {
                      <p className="text-gray-500 text-xs">{user.email}</p>
                    </div>
                 </div>
+                <Link to={`/profile/${user.id}`} className="block px-3 py-3 text-base font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-md">
+                   <Film className="inline-block w-4 h-4 mr-2" /> My Profile
+                </Link>
                 {user.role === 'ADMIN' && (
                    <Link to="/admin" className="block px-3 py-3 text-base font-medium text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 rounded-md">
                      <ShieldCheck className="inline-block w-4 h-4 mr-2" />

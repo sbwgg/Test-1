@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../services/authContext';
 import { db } from '../services/db';
 import { Post, UserRole } from '../types';
-import { MessageSquare, Users, Star, Megaphone, Trash2, Pin, Plus, X, Tag, User as UserIcon } from 'lucide-react';
+import { MessageSquare, Users, Star, Megaphone, Trash2, Pin, Plus, X, Tag, User as UserIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Community: React.FC = () => {
@@ -10,11 +11,9 @@ const Community: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Filters
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [showMyPosts, setShowMyPosts] = useState(false);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
@@ -74,7 +73,6 @@ const Community: React.FC = () => {
     }
   };
 
-  // Filter Logic
   const filteredPosts = posts.filter(post => {
     if (showMyPosts && (!user || post.userId !== user.id)) return false;
     if (activeCategory !== 'All' && post.category !== activeCategory) return false;
@@ -93,11 +91,18 @@ const Community: React.FC = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const countComments = (comments: any[]): number => {
+      if(!comments) return 0;
+      let count = comments.length;
+      for(const c of comments) {
+          if(c.replies) count += countComments(c.replies);
+      }
+      return count;
+  };
+
   return (
     <div className="pt-28 min-h-screen px-4 md:px-12 pb-20 bg-[#020617]">
       <div className="max-w-7xl mx-auto">
-        
-        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">Community Hub</h1>
@@ -112,7 +117,6 @@ const Community: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
           <div className="space-y-6">
              <div className="bg-[#1e293b]/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4 shadow-xl">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 px-2">Categories</h3>
@@ -150,29 +154,35 @@ const Community: React.FC = () => {
              </div>
           </div>
 
-          {/* Main Feed */}
           <div className="lg:col-span-3 space-y-4">
              {loading ? (
                 <div className="flex justify-center py-20">
                     <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-violet-500"></div>
                 </div>
              ) : filteredPosts.length > 0 ? (
-                filteredPosts.map(post => (
-                    <div key={post.id} className={`bg-[#1e293b]/50 backdrop-blur-md border rounded-2xl p-6 transition-all hover:bg-[#1e293b]/80 group ${post.isPinned ? 'border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.1)]' : 'border-white/5'}`}>
+                filteredPosts.map(post => {
+                    const likeCount = (post.likes?.length || 0) - (post.dislikes?.length || 0);
+                    const commentCount = countComments(post.comments || []);
+                    return (
+                    <div key={post.id} className={`bg-[#1e293b]/50 backdrop-blur-md border rounded-2xl p-6 transition-all hover:bg-[#1e293b]/80 group relative ${post.isPinned ? 'border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.1)]' : 'border-white/5'}`}>
                         <div className="flex items-start justify-between">
-                            <div className="flex gap-4">
-                                <div className="flex-shrink-0">
+                            <div className="flex gap-4 w-full">
+                                <Link to={`/profile/${post.userId}`} className="flex-shrink-0 cursor-pointer">
                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center border border-white/10 overflow-hidden">
                                       {post.authorAvatar ? <img src={post.authorAvatar} alt="ava" className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-gray-400" />}
                                    </div>
-                                </div>
-                                <div>
+                                </Link>
+                                <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="text-lg font-bold text-white leading-tight">{post.title}</h3>
+                                        <Link to={`/community/post/${post.id}`} className="text-lg font-bold text-white leading-tight hover:text-violet-400 transition-colors">
+                                            {post.title}
+                                        </Link>
                                         {post.isPinned && <Pin className="w-4 h-4 text-violet-400 fill-violet-400 rotate-45" />}
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
-                                        <span className={`font-medium ${post.authorRole === 'ADMIN' ? 'text-violet-400' : 'text-gray-300'}`}>{post.authorName}</span>
+                                        <Link to={`/profile/${post.userId}`} className={`font-medium hover:underline ${post.authorRole === 'ADMIN' ? 'text-violet-400' : 'text-gray-300'}`}>
+                                            {post.authorName}
+                                        </Link>
                                         <span>•</span>
                                         <span>{formatDate(post.createdAt)}</span>
                                         <span>•</span>
@@ -180,11 +190,23 @@ const Community: React.FC = () => {
                                             {post.category}
                                         </span>
                                     </div>
-                                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap line-clamp-3">{post.content}</p>
+                                    
+                                    {/* Footer Stats */}
+                                    <div className="flex items-center gap-6 mt-4 text-sm text-gray-400">
+                                        <div className="flex items-center gap-1.5">
+                                            <ThumbsUp className="w-4 h-4" />
+                                            <span>{likeCount}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <MessageSquare className="w-4 h-4" />
+                                            <span>{commentCount} comments</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {user?.role === 'ADMIN' && (
                                     <>
                                         <button onClick={() => handlePin(post.id)} className={`p-2 rounded hover:bg-white/10 transition-colors ${post.isPinned ? 'text-violet-400' : 'text-gray-400'}`} title={post.isPinned ? "Unpin" : "Pin"}>
@@ -213,7 +235,6 @@ const Community: React.FC = () => {
         </div>
       </div>
 
-      {/* Create Post Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
            <div className="bg-[#1e293b] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl overflow-hidden animate-scale-in">

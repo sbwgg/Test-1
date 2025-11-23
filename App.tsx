@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './services/authContext';
@@ -10,6 +11,8 @@ import AdminDashboard from './pages/Admin';
 import AdvancedSearch from './pages/AdvancedSearch';
 import Settings from './pages/Settings';
 import Community from './pages/Community';
+import PostDetail from './pages/PostDetail';
+import Profile from './pages/Profile';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }: React.PropsWithChildren<{ requireAdmin?: boolean }>) => {
@@ -39,6 +42,8 @@ const App: React.FC = () => {
               <Route path="/" element={<Home />} />
               <Route path="/search" element={<AdvancedSearch />} />
               <Route path="/community" element={<Community />} />
+              <Route path="/community/post/:id" element={<PostDetail />} />
+              <Route path="/profile/:id" element={<Profile />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               

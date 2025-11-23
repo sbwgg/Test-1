@@ -1,3 +1,4 @@
+
 export enum UserRole {
   USER = 'USER',
   ADMIN = 'ADMIN'
@@ -8,27 +9,41 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  avatarUrl?: string; // New field for PFP
+  avatarUrl?: string;
+  watchlist?: string[]; // Array of Movie IDs
+  isWatchlistPublic?: boolean;
+  createdAt?: string;
 }
 
 export interface Movie {
   id: string;
   title: string;
   description: string;
-  thumbnailUrl: string; // Poster
-  coverUrl: string; // Wide banner
+  thumbnailUrl: string;
+  coverUrl: string;
   videoUrl: string;
   genre: string[];
   year: number;
   duration: string;
-  rating: string; // e.g., PG-13, R
+  rating: string;
   isFeatured?: boolean;
   views: number;
-  
-  // Advanced Fields
   type: 'movie' | 'series';
   audioLanguages: string[];
   subtitleLanguages: string[];
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string;
+  likes: string[]; // Array of User IDs
+  dislikes: string[]; // Array of User IDs
+  replies: Comment[];
 }
 
 export interface Post {
@@ -42,7 +57,9 @@ export interface Post {
   category: 'General' | 'Updates' | 'Recommendations' | 'Discussion';
   createdAt: string;
   isPinned: boolean;
-  likes: number;
+  likes: string[]; // Array of User IDs
+  dislikes: string[]; // Array of User IDs
+  comments: Comment[];
 }
 
 export interface AuthState {
@@ -52,4 +69,5 @@ export interface AuthState {
   register: (email: string, name: string) => Promise<void>;
   updateProfile: (data: Partial<User> & { password?: string }) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }

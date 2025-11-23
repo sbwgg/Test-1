@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthState, UserRole } from '../types';
 import { db } from './db';
@@ -9,17 +10,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const savedUser = localStorage.getItem('streamai_user');
-      const token = localStorage.getItem('streamai_token');
-      
-      if (savedUser && token) {
-        setUser(JSON.parse(savedUser));
-      }
-      setLoading(false);
-    };
     checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+      const token = localStorage.getItem('streamai_token');
+      if (token) {
+        try {
+            const res = await fetch('/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const userData = await res.json();
+                setUser(userData);
+                localStorage.setItem('streamai_user', JSON.stringify(userData));
+            } else {
+                logout();
+            }
+        } catch (e) {
+            logout();
+        }
+      }
+      setLoading(false);
+  };
 
   const login = async (email: string, password?: string) => {
     const res = await fetch('/api/auth/login', {
@@ -53,7 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<User> & { password?: string }) => {
     const result = await db.updateProfile(data);
-    // Update local storage and state with new token and user data
     localStorage.setItem('streamai_token', result.token);
     localStorage.setItem('streamai_user', JSON.stringify(result.user));
     setUser(result.user);
@@ -66,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, logout, refreshUser: checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
