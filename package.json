@@ -23,8 +23,7 @@
     "tailwind-merge": "^2.2.1",
     "multer": "^1.4.5-lts.1",
     "fluent-ffmpeg": "^2.1.2",
-    "hls.js": "^1.5.8",
-    "@google/genai": "^0.1.1"
+    "hls.js": "^1.5.8"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
