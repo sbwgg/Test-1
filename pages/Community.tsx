@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../services/authContext';
+import { useToast } from '../services/toastContext';
 import { db } from '../services/db';
 import { Post, UserRole } from '../types';
 import { MessageSquare, Users, Star, Megaphone, Trash2, Pin, Plus, X, Tag, User as UserIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
@@ -8,6 +9,7 @@ import { Link } from 'react-router-dom';
 
 const Community: React.FC = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -45,9 +47,10 @@ const Community: React.FC = () => {
       setNewContent('');
       setNewCategory('General');
       setIsModalOpen(false);
+      toast.success("Post created successfully!");
       fetchPosts();
     } catch (err) {
-      alert('Failed to create post');
+      toast.error('Failed to create post');
     } finally {
       setSubmitLoading(false);
     }
@@ -57,9 +60,10 @@ const Community: React.FC = () => {
     if (confirm("Are you sure you want to delete this post?")) {
       try {
         await db.deletePost(id);
+        toast.success("Post deleted");
         fetchPosts();
       } catch (e) {
-        alert("Failed to delete post");
+        toast.error("Failed to delete post");
       }
     }
   };
@@ -69,7 +73,7 @@ const Community: React.FC = () => {
       await db.togglePinPost(id);
       fetchPosts();
     } catch (e) {
-      alert("Failed to toggle pin");
+      toast.error("Failed to toggle pin");
     }
   };
 
@@ -109,7 +113,7 @@ const Community: React.FC = () => {
             <p className="text-gray-400">Join the discussion, share your favorites, and get the latest updates.</p>
           </div>
           <button 
-            onClick={() => user ? setIsModalOpen(true) : alert("Please log in to post")}
+            onClick={() => user ? setIsModalOpen(true) : toast.info("Please log in to post")}
             className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-violet-900/30 transition-all hover:-translate-y-1"
           >
             <Plus className="w-5 h-5" /> New Post

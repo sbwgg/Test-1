@@ -1,9 +1,12 @@
+
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../services/authContext';
-import { Camera, User, Lock, Mail, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { useToast } from '../services/toastContext';
+import { Camera, User, Lock, Mail, Save } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const { user, updateProfile } = useAuth();
+  const { toast } = useToast();
   
   // Tabs
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
@@ -16,14 +19,13 @@ const Settings: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        setMessage({ type: 'error', text: 'Image size should be less than 2MB' });
+        toast.error('Image size should be less than 2MB');
         return;
       }
       const reader = new FileReader();
@@ -37,13 +39,12 @@ const Settings: React.FC = () => {
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage(null);
 
     try {
       await updateProfile({ name, avatarUrl });
-      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      toast.success('Profile updated successfully!');
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Failed to update profile' });
+      toast.error(err.message || 'Failed to update profile');
     } finally {
       setIsLoading(false);
     }
@@ -52,21 +53,20 @@ const Settings: React.FC = () => {
   const handleSecurityUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage(null);
 
     if (password && password !== confirmPassword) {
-      setMessage({ type: 'error', text: "Passwords don't match" });
+      toast.error("Passwords don't match");
       setIsLoading(false);
       return;
     }
 
     try {
       await updateProfile({ email, password: password || undefined });
-      setMessage({ type: 'success', text: 'Security settings updated successfully!' });
+      toast.success('Security settings updated successfully!');
       setPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Failed to update settings' });
+      toast.error(err.message || 'Failed to update settings');
     } finally {
       setIsLoading(false);
     }
@@ -98,13 +98,6 @@ const Settings: React.FC = () => {
           <div className="flex-1">
              <div className="bg-[#1e293b]/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 shadow-xl">
                 
-                {message && (
-                  <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                     {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                     {message.text}
-                  </div>
-                )}
-
                 {activeTab === 'profile' && (
                   <form onSubmit={handleProfileUpdate} className="space-y-8 animate-fade-in">
                     {/* Avatar Upload */}

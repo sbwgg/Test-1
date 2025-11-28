@@ -1,19 +1,26 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../services/db';
 import { Movie } from '../types';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, SkipForward, Rewind, MessageSquare, Mic } from 'lucide-react';
+import { useToast } from '../services/toastContext';
+import { useAuth } from '../services/authContext';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, SkipForward, Rewind, MessageSquare, Mic, ShieldCheck, Lock } from 'lucide-react';
 import { getFlag } from '../utils/languages';
+import Hls from 'hls.js';
 
 const Watch: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [movie, setMovie] = useState<Movie | null>(null);
   
   // Player State
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true); // Auto-play default
+  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
@@ -21,27 +28,121 @@ const Watch: React.FC = () => {
   const [showControls, setShowControls] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSecureStream, setIsSecureStream] = useState(false);
+  const [streamLoading, setStreamLoading] = useState(true);
+  const [streamError, setStreamError] = useState('');
 
   // Simulated Media State
   const [currentAudio, setCurrentAudio] = useState('English');
   const [currentSub, setCurrentSub] = useState('Off');
-  const [showToast, setShowToast] = useState('');
 
   useEffect(() => {
-    const fetchMovie = async () => {
-      if (id) {
+    const fetchMovieAndStream = async () => {
+      if (!id) return;
+      setStreamLoading(true);
+      
+      try {
         const found = await db.getMovieById(id);
-        if (found) {
-          setMovie(found);
-          // Set defaults
-          if(found.audioLanguages?.length > 0) setCurrentAudio(found.audioLanguages[0]);
-        } else {
-          navigate('/');
+        if (!found) {
+           navigate('/');
+           return;
         }
+        setMovie(found);
+        if(found.audioLanguages?.length > 0) setCurrentAudio(found.audioLanguages[0]);
+
+        // --- AUTHENTICATE STREAM ---
+        // Instead of playing found.videoUrl directly, we request a signed URL from backend
+        // This mimics the secure_link behavior
+        const token = localStorage.getItem('streamai_token');
+        
+        try {
+            const res = await fetch(`/api/stream/authorize/${id}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            
+            if (!res.ok) {
+                 if (res.status === 401 || res.status === 403) {
+                     setStreamError("Access Denied: Please Login or Upgrade to watch.");
+                 } else {
+                     setStreamError("Stream authorization failed.");
+                 }
+                 setStreamLoading(false);
+                 return;
+            }
+
+            const data = await res.json();
+            const secureUrl = data.url;
+            setIsSecureStream(true);
+
+            // Initialize Player with Secure URL
+            initPlayer(secureUrl);
+
+        } catch (authError) {
+            console.error("Stream Auth Failed", authError);
+            setStreamError("Failed to connect to secure streaming server.");
+        }
+
+      } catch (e) {
+        console.error(e);
+        navigate('/');
+      } finally {
+        setStreamLoading(false);
       }
     };
-    fetchMovie();
+
+    fetchMovieAndStream();
+    
+    return () => {
+        if (hlsRef.current) {
+            hlsRef.current.destroy();
+        }
+    };
   }, [id, navigate]);
+
+  const initPlayer = (url: string) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      const isHls = url.includes('.m3u8');
+
+      if (isHls && Hls.isSupported()) {
+          if (hlsRef.current) hlsRef.current.destroy();
+          
+          const hls = new Hls({
+             xhrSetup: (xhr, url) => {
+                 // Optional: Add custom headers if using JWT in headers instead of query params
+                 // xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+             }
+          });
+          
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+             video.play().catch(() => setIsPlaying(false));
+             setIsPlaying(true);
+          });
+          hls.on(Hls.Events.ERROR, (event, data) => {
+             console.error("HLS Error", data);
+             if (data.fatal) {
+                 toast.error("Stream Error: " + data.type);
+             }
+          });
+          hlsRef.current = hls;
+
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          // Native HLS support (Safari)
+          video.src = url;
+          video.addEventListener('loadedmetadata', () => {
+              video.play();
+              setIsPlaying(true);
+          });
+      } else {
+          // Standard MP4
+          video.src = url;
+          video.play().catch(() => setIsPlaying(false));
+          setIsPlaying(true);
+      }
+  };
 
   // Mouse movement to show/hide controls
   useEffect(() => {
@@ -121,28 +222,37 @@ const Watch: React.FC = () => {
 
   const changeAudio = (lang: string) => {
       setCurrentAudio(lang);
-      setShowToast(`Audio changed to ${lang}`);
-      setTimeout(() => setShowToast(''), 3000);
+      toast.info(`Audio changed to ${lang}`);
   };
 
   const changeSub = (lang: string) => {
       setCurrentSub(lang);
-      setShowToast(`Subtitles: ${lang}`);
-      setTimeout(() => setShowToast(''), 3000);
+      toast.info(`Subtitles: ${lang}`);
   };
 
-  if (!movie) return <div className="h-screen bg-black text-white flex items-center justify-center">Loading Player...</div>;
+  if (!movie || streamLoading) return (
+      <div className="h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
+          <div className="flex items-center gap-2 text-violet-400 font-bold">
+              <ShieldCheck className="w-5 h-5 animate-pulse" /> Authenticating Secure Stream...
+          </div>
+      </div>
+  );
+
+  if (streamError) return (
+      <div className="h-screen bg-black text-white flex flex-col items-center justify-center gap-6">
+          <div className="bg-red-500/10 p-6 rounded-full border border-red-500/20">
+              <Lock className="w-16 h-16 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold">{streamError}</h2>
+          <Link to="/login" className="bg-violet-600 px-6 py-2 rounded-lg font-bold hover:bg-violet-700">Login to Watch</Link>
+          <Link to="/" className="text-gray-400 hover:text-white underline">Back to Home</Link>
+      </div>
+  );
 
   return (
     <div ref={playerContainerRef} className="w-full h-screen bg-black flex flex-col relative overflow-hidden group">
       
-      {/* Toast Notification */}
-      {showToast && (
-          <div className="absolute top-20 right-10 bg-black/80 text-white px-6 py-3 rounded-lg border border-white/20 z-50 animate-fade-in backdrop-blur-md">
-              {showToast}
-          </div>
-      )}
-
       {/* Video Element */}
       <video 
         ref={videoRef}
@@ -151,18 +261,22 @@ const Watch: React.FC = () => {
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => setIsPlaying(false)}
         onClick={togglePlay}
-        autoPlay
-      >
-        <source src={movie.videoUrl} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+        playsInline
+      />
+
+      {/* Secure Indicator (Subtle) */}
+      {isSecureStream && (
+          <div className="absolute top-6 left-20 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur px-2 py-1 rounded text-[10px] text-green-400 flex items-center gap-1 border border-green-500/20">
+              <ShieldCheck className="w-3 h-3" /> Encrypted Connection
+          </div>
+      )}
 
       {/* Controls Overlay */}
       <div className={`absolute inset-0 flex flex-col justify-between bg-gradient-to-b from-black/70 via-transparent to-black/80 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
         
         {/* Top Header */}
-        <div className="p-6 flex items-center justify-between">
-            <Link to="/" className="text-gray-300 hover:text-white transition-transform hover:scale-110 p-2 bg-black/20 rounded-full">
+        <div className="p-6 flex items-center justify-between pointer-events-none">
+            <Link to="/" className="text-gray-300 hover:text-white transition-transform hover:scale-110 p-2 bg-black/20 rounded-full pointer-events-auto">
                 <ArrowLeft className="h-8 w-8" />
             </Link>
             <div className="text-center md:text-left">
@@ -174,7 +288,7 @@ const Watch: React.FC = () => {
 
         {/* Center Play Button (only when paused) */}
         {!isPlaying && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
                 <button onClick={togglePlay} className="bg-violet-600/90 text-white p-6 rounded-full hover:bg-violet-600 hover:scale-110 transition-all shadow-[0_0_30px_rgba(124,58,237,0.5)]">
                     <Play className="h-12 w-12 fill-current pl-1" />
                 </button>
@@ -182,7 +296,7 @@ const Watch: React.FC = () => {
         )}
 
         {/* Bottom Controls */}
-        <div className="px-6 pb-6 pt-20">
+        <div className="px-6 pb-6 pt-20 pointer-events-auto">
             {/* Progress Bar */}
             <div className="relative group/progress mb-4 cursor-pointer">
                 <input 

@@ -3,6 +3,7 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './services/authContext';
 import { SettingsProvider, useSettings } from './services/settingsContext';
+import { ToastProvider } from './services/toastContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -125,7 +126,9 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <AppContent />
+        <ToastProvider>
+           <AppContent />
+        </ToastProvider>
       </SettingsProvider>
     </AuthProvider>
   );

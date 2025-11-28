@@ -4,8 +4,9 @@ import { db } from '../services/db';
 import { generateMovieMetadata } from '../services/gemini';
 import { Movie, User, UserRole } from '../types';
 import { useSettings } from '../services/settingsContext';
+import { useToast } from '../services/toastContext';
 import { LANGUAGES, getFlag } from '../utils/languages';
-import { Trash2, Plus, Sparkles, Film, BarChart3, Users, PlayCircle, Search, X, ShieldCheck, Clock, Calendar, Mic, Type, PenSquare, Save, UserCog, KeyRound, Check, Wrench, AlertTriangle, ToggleLeft, ToggleRight, LayoutTemplate } from 'lucide-react';
+import { Trash2, Plus, Sparkles, Film, BarChart3, Users, PlayCircle, Search, X, ShieldCheck, Clock, Calendar, Mic, Type, PenSquare, Save, UserCog, KeyRound, Check, Wrench, AlertTriangle, Upload, LayoutTemplate } from 'lucide-react';
 
 // Internal MultiSelect Component
 const LanguageMultiSelect: React.FC<{
@@ -35,7 +36,6 @@ const LanguageMultiSelect: React.FC<{
         <Icon className="w-3 h-3" /> {label}
       </label>
       
-      {/* Selected Tags Display */}
       <div 
         className="min-h-[42px] w-full bg-[#0f172a] border border-gray-600 rounded-lg px-3 py-2 cursor-pointer flex flex-wrap gap-2 hover:border-violet-500 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
@@ -54,10 +54,8 @@ const LanguageMultiSelect: React.FC<{
         ))}
       </div>
 
-      {/* Dropdown */}
       {isOpen && (
         <div className="absolute top-full left-0 w-full mt-2 bg-[#1e293b] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-scale-in">
-           {/* Search Bar */}
            <div className="p-3 border-b border-gray-700">
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
@@ -72,7 +70,6 @@ const LanguageMultiSelect: React.FC<{
              </div>
            </div>
            
-           {/* List */}
            <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {filteredLanguages.map(lang => {
                 const isSelected = selected.includes(lang.name);
@@ -90,24 +87,13 @@ const LanguageMultiSelect: React.FC<{
                   </div>
                 );
               })}
-              {filteredLanguages.length === 0 && (
-                <div className="text-center text-gray-500 py-4 text-xs">No languages found</div>
-              )}
            </div>
            
-           {/* Footer */}
            <div className="p-2 border-t border-gray-700 bg-[#0f172a]">
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-lg"
-              >
-                Done
-              </button>
+              <button onClick={() => setIsOpen(false)} className="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-lg">Done</button>
            </div>
         </div>
       )}
-      
-      {/* Overlay to close when clicking outside */}
       {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>}
     </div>
   );
@@ -116,33 +102,28 @@ const LanguageMultiSelect: React.FC<{
 
 const AdminDashboard: React.FC = () => {
   const { settings, updateSettings } = useSettings();
-
-  // Tabs
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'content' | 'users' | 'settings'>('content');
-
-  // Content State
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // User Management State
   const [users, setUsers] = useState<User[]>([]);
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userSearchTerm, setUserSearchTerm] = useState('');
-
-  // Settings State
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userRole, setUserRole] = useState<UserRole>(UserRole.USER);
+  const [userAvatar, setUserAvatar] = useState('');
+  const [userPassword, setUserPassword] = useState('');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [settingsLoading, setSettingsLoading] = useState(false);
-
-  // Movie Form Fields
   const [title, setTitle] = useState('');
-  const [videoUrl, setVideoUrl] = useState('http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
   const [coverUrl, setCoverUrl] = useState('');
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('');
@@ -150,30 +131,29 @@ const AdminDashboard: React.FC = () => {
   const [duration, setDuration] = useState('');
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [contentType, setContentType] = useState<'movie' | 'series'>('movie');
-  
-  // Replaced simple strings with arrays for languages
   const [audioLangs, setAudioLangs] = useState<string[]>([]);
   const [subLangs, setSubLangs] = useState<string[]>([]);
 
-  // User Form Fields
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
-  const [userAvatar, setUserAvatar] = useState('');
-  const [userRole, setUserRole] = useState<UserRole>(UserRole.USER);
-  const [userPassword, setUserPassword] = useState(''); // Only for changing
+  // Video Upload State
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [existingVideoPath, setExistingVideoPath] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const refreshData = async () => {
-    const movieData = await db.getMovies();
-    setMovies(movieData);
-    const userData = await db.getUsers();
-    setUsers(userData);
+    try {
+      const movieData = await db.getMovies();
+      setMovies(movieData);
+      const userData = await db.getUsers();
+      setUsers(userData);
+    } catch (e) {
+      toast.error("Failed to refresh data");
+    }
   };
 
   useEffect(() => {
     refreshData();
   }, []);
 
-  // Sync local state with context settings on mount/change
   useEffect(() => {
     setMaintenanceMode(settings.maintenanceMode);
     setMaintenanceMessage(settings.maintenanceMessage);
@@ -181,12 +161,15 @@ const AdminDashboard: React.FC = () => {
     setNotificationMessage(settings.notificationMessage);
   }, [settings]);
 
-  // --- CONTENT ACTIONS ---
-
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this content?")) {
-      await db.deleteMovie(id);
-      refreshData();
+      try {
+        await db.deleteMovie(id);
+        toast.success("Content deleted successfully");
+        await refreshData();
+      } catch (e) {
+        toast.error("Failed to delete content");
+      }
     }
   };
 
@@ -195,7 +178,8 @@ const AdminDashboard: React.FC = () => {
       setTitle(movie.title);
       setDescription(movie.description);
       setCoverUrl(movie.coverUrl || movie.thumbnailUrl);
-      setVideoUrl(movie.videoUrl);
+      setExistingVideoPath(movie.videoUrl); // Store existing path
+      setVideoFile(null); // Reset file
       setGenre(movie.genre.join(', '));
       setRating(movie.rating);
       setDuration(movie.duration);
@@ -208,7 +192,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleAIGenerate = async () => {
-    if (!title) return alert("Please enter a title first");
+    if (!title) return toast.info("Please enter a title first");
     setLoadingAI(true);
     try {
       const meta = await generateMovieMetadata(title);
@@ -218,50 +202,86 @@ const AdminDashboard: React.FC = () => {
       setDuration(meta.duration);
       setYear(meta.year);
       if (!coverUrl) setCoverUrl(`https://picsum.photos/seed/${title.replace(/\s/g, '')}/1920/800`);
+      toast.success("Metadata generated!");
     } catch (e) {
-      alert("Generation failed.");
+      toast.error("Generation failed.");
     } finally {
       setLoadingAI(false);
     }
   };
 
+  const handleUploadVideo = async (): Promise<string> => {
+      if (!videoFile) return existingVideoPath;
+
+      const formData = new FormData();
+      formData.append('video', videoFile);
+
+      // Get token manually since we aren't using db wrapper for this specific fetch
+      const token = localStorage.getItem('streamai_token');
+      
+      const res = await fetch('/api/admin/upload', {
+          method: 'POST',
+          headers: {
+              'Authorization': `Bearer ${token}`
+          },
+          body: formData
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      return data.videoPath;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const moviePayload: any = {
-      title,
-      description,
-      thumbnailUrl: coverUrl,
-      coverUrl,
-      videoUrl,
-      genre: genre.split(',').map(g => g.trim()),
-      rating,
-      duration,
-      year,
-      type: contentType,
-      audioLanguages: audioLangs,
-      subtitleLanguages: subLangs,
-    };
+    setIsUploading(true);
 
-    if (editingId) {
-        await db.updateMovie(editingId, moviePayload);
-    } else {
-        await db.addMovie(moviePayload);
+    try {
+      // 1. Upload Video First (if exists)
+      const videoPath = await handleUploadVideo();
+
+      const moviePayload: any = {
+        title,
+        description,
+        thumbnailUrl: coverUrl,
+        coverUrl,
+        videoUrl: videoPath, // Use the path returned from upload
+        genre: genre.split(',').map(g => g.trim()),
+        rating,
+        duration,
+        year,
+        type: contentType,
+        audioLanguages: audioLangs,
+        subtitleLanguages: subLangs,
+      };
+
+      if (editingId) {
+          await db.updateMovie(editingId, moviePayload);
+          toast.success("Content updated successfully");
+      } else {
+          await db.addMovie(moviePayload);
+          toast.success("Content added & transcoding started");
+      }
+
+      await refreshData();
+      closeForm();
+    } catch (e) {
+      toast.error("Operation failed. Check logs.");
+      console.error(e);
+    } finally {
+        setIsUploading(false);
     }
-
-    await refreshData();
-    closeForm();
   };
 
   const closeForm = () => {
     setIsFormOpen(false);
     setEditingId(null);
-    setTitle(''); setVideoUrl(''); setCoverUrl(''); setDescription('');
+    setTitle(''); setVideoFile(null); setExistingVideoPath(''); setCoverUrl(''); setDescription('');
     setGenre(''); setRating(''); setDuration(''); setYear(new Date().getFullYear());
     setAudioLangs([]); setSubLangs([]);
   };
 
-  // --- USER ACTIONS ---
-
+  // User Actions
   const handleEditUser = (user: User) => {
       setEditingUserId(user.id);
       setUserName(user.name);
@@ -276,17 +296,17 @@ const AdminDashboard: React.FC = () => {
       if(confirm("Are you sure? This cannot be undone.")) {
           try {
             await db.deleteUser(id);
-            refreshData();
+            toast.success("User deleted");
+            await refreshData();
           } catch(e: any) {
-              alert(e.message);
+              toast.error(e.message || "Failed to delete user");
           }
       }
   };
 
   const handleUserSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!editingUserId) return; // Should only support edit for now, creating via register
-
+      if (!editingUserId) return; 
       const payload = {
           name: userName,
           email: userEmail,
@@ -294,14 +314,17 @@ const AdminDashboard: React.FC = () => {
           avatarUrl: userAvatar,
           password: userPassword || undefined
       };
-
-      await db.updateUser(editingUserId, payload);
-      await refreshData();
-      setIsUserFormOpen(false);
-      setEditingUserId(null);
+      try {
+        await db.updateUser(editingUserId, payload);
+        toast.success("User profile updated");
+        await refreshData();
+        setIsUserFormOpen(false);
+        setEditingUserId(null);
+      } catch (e) {
+        toast.error("Failed to update user");
+      }
   };
 
-  // --- SETTINGS ACTIONS ---
   const handleSaveSettings = async () => {
       setSettingsLoading(true);
       try {
@@ -311,9 +334,9 @@ const AdminDashboard: React.FC = () => {
               showNotification,
               notificationMessage
           });
-          alert("Site settings updated successfully.");
+          toast.success("Site settings updated successfully.");
       } catch (e) {
-          alert("Failed to update settings.");
+          toast.error("Failed to update settings.");
       } finally {
           setSettingsLoading(false);
       }
@@ -321,14 +344,11 @@ const AdminDashboard: React.FC = () => {
 
   const filteredMovies = movies.filter(m => m.title.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredUsers = users.filter(u => u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || u.email.includes(userSearchTerm));
-
-  // Stats
   const totalViews = movies.reduce((acc, curr) => acc + (curr.views || 0), 0);
   const totalGenres = new Set(movies.flatMap(m => m.genre)).size;
 
   return (
     <div className="pt-28 px-4 max-w-7xl mx-auto min-h-screen pb-20 bg-[#020617]">
-      
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-fade-in">
         <div className="bg-[#1e293b]/60 backdrop-blur-md p-6 rounded-2xl border border-white/5 shadow-xl flex items-center justify-between group hover:border-violet-500/30 transition-all hover:-translate-y-1">
@@ -365,30 +385,20 @@ const AdminDashboard: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-800 mb-8 overflow-x-auto hide-scrollbar">
-          <button 
-            onClick={() => setActiveTab('content')}
-            className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'content' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
-          >
+          <button onClick={() => setActiveTab('content')} className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'content' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}>
               <div className="flex items-center gap-2"><Film className="w-4 h-4" /> Content Library</div>
               {activeTab === 'content' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-500"></div>}
           </button>
-          <button 
-            onClick={() => setActiveTab('users')}
-            className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'users' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
-          >
+          <button onClick={() => setActiveTab('users')} className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'users' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}>
               <div className="flex items-center gap-2"><Users className="w-4 h-4" /> User Management</div>
               {activeTab === 'users' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-500"></div>}
           </button>
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'settings' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}
-          >
+          <button onClick={() => setActiveTab('settings')} className={`px-6 py-3 font-bold text-sm transition-colors relative flex-shrink-0 ${activeTab === 'settings' ? 'text-violet-400' : 'text-gray-500 hover:text-gray-300'}`}>
               <div className="flex items-center gap-2"><Wrench className="w-4 h-4" /> Site Settings</div>
               {activeTab === 'settings' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-500"></div>}
           </button>
       </div>
 
-      {/* === CONTENT TAB === */}
       {activeTab === 'content' && (
       <>
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
@@ -398,18 +408,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex gap-4 w-full md:w-auto">
                 <div className="relative flex-1 md:w-80 group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-violet-400 transition-colors" />
-                    <input 
-                        type="text" 
-                        placeholder="Search library..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#0f172a] border border-gray-700 text-white pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600/50 focus:border-violet-600 text-sm placeholder-gray-500 transition-all shadow-inner"
-                    />
+                    <input type="text" placeholder="Search library..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 text-white pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600/50 focus:border-violet-600 text-sm placeholder-gray-500 transition-all shadow-inner" />
                 </div>
-                <button 
-                onClick={() => { closeForm(); setIsFormOpen(!isFormOpen); }}
-                className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-lg flex items-center font-bold shadow-lg shadow-violet-900/20 transition-all hover:scale-105 active:scale-95"
-                >
+                <button onClick={() => { closeForm(); setIsFormOpen(!isFormOpen); }} className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-lg flex items-center font-bold shadow-lg shadow-violet-900/20 transition-all hover:scale-105 active:scale-95">
                 {isFormOpen ? <X className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
                 {isFormOpen ? 'Cancel' : 'Add Content'}
                 </button>
@@ -420,9 +421,7 @@ const AdminDashboard: React.FC = () => {
             <div className="bg-[#1e293b] p-8 rounded-2xl mb-12 border border-white/5 animate-slide-up shadow-2xl relative overflow-hidden">
             <div className="relative z-10">
                 <div className="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white">{editingId ? 'Edit Content' : 'Publish New Content'}</h2>
-                    </div>
+                    <div><h2 className="text-2xl font-bold text-white">{editingId ? 'Edit Content' : 'Publish New Content'}</h2></div>
                     {!editingId && (
                         <div className="flex items-center gap-2 bg-gradient-to-r from-violet-900/50 to-cyan-900/50 border border-white/10 px-3 py-1.5 rounded-full">
                             <Sparkles className="w-4 h-4 text-violet-400" />
@@ -436,160 +435,84 @@ const AdminDashboard: React.FC = () => {
                     <div className="space-y-6">
                         <div className="relative flex gap-2">
                             <div className="relative flex-1 group">
-                                <input 
-                                type="text" 
-                                id="title"
-                                value={title} 
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                placeholder=" "
-                                required 
-                                />
-                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                    Content Title
-                                </label>
+                                <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors" placeholder=" " required />
+                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Content Title</label>
                             </div>
-                            <button 
-                            type="button"
-                            onClick={handleAIGenerate}
-                            disabled={loadingAI}
-                            className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-lg flex items-center justify-center disabled:opacity-50 transition-all shadow-lg"
-                            title="Auto-fill"
-                            >
+                            <button type="button" onClick={handleAIGenerate} disabled={loadingAI} className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-lg flex items-center justify-center disabled:opacity-50 transition-all shadow-lg" title="Auto-fill">
                             {loadingAI ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> : <Sparkles className="w-5 h-5" />}
                             </button>
                         </div>
 
                         <div className="relative group">
-                            <select 
-                                value={contentType}
-                                onChange={(e) => setContentType(e.target.value as 'movie' | 'series')}
-                                className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors cursor-pointer"
-                            >
+                            <select value={contentType} onChange={(e) => setContentType(e.target.value as 'movie' | 'series')} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors cursor-pointer">
                                 <option value="movie" className="bg-[#1e293b]">Movie</option>
                                 <option value="series" className="bg-[#1e293b]">TV Series</option>
                             </select>
-                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                Content Type
-                            </label>
+                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Content Type</label>
+                        </div>
+
+                        {/* File Upload Section */}
+                        <div className="relative group p-4 border border-dashed border-gray-600 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                                <Upload className="w-8 h-8 text-violet-500" />
+                                <label className="text-sm font-bold text-white cursor-pointer">
+                                    <span className="text-violet-400 hover:underline">Click to upload</span> or drag and drop MP4
+                                    <input 
+                                        type="file" 
+                                        accept="video/mp4" 
+                                        className="hidden" 
+                                        onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                                    />
+                                </label>
+                                <p className="text-xs text-gray-500">
+                                    {videoFile ? `Selected: ${videoFile.name}` : existingVideoPath ? 'Video already uploaded (Upload new to replace)' : 'Max size: 5GB'}
+                                </p>
+                            </div>
                         </div>
 
                         <div className="relative group">
-                            <input 
-                                type="text" 
-                                value={videoUrl} 
-                                onChange={(e) => setVideoUrl(e.target.value)}
-                                className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                placeholder=" "
-                                required
-                            />
-                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                Video Source URL
-                            </label>
-                        </div>
-
-                        <div className="relative group">
-                            <input 
-                                type="text" 
-                                value={coverUrl} 
-                                onChange={(e) => setCoverUrl(e.target.value)}
-                                className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                placeholder=" "
-                                required
-                            />
-                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                Cover Image URL
-                            </label>
+                            <input type="text" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors" placeholder=" " required />
+                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Cover Image URL</label>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                           <LanguageMultiSelect 
-                              label="Audio Languages" 
-                              icon={Mic} 
-                              selected={audioLangs} 
-                              onChange={setAudioLangs} 
-                           />
-                           <LanguageMultiSelect 
-                              label="Subtitle Languages" 
-                              icon={Type} 
-                              selected={subLangs} 
-                              onChange={setSubLangs} 
-                           />
+                           <LanguageMultiSelect label="Audio Languages" icon={Mic} selected={audioLangs} onChange={setAudioLangs} />
+                           <LanguageMultiSelect label="Subtitle Languages" icon={Type} selected={subLangs} onChange={setSubLangs} />
                         </div>
                     </div>
 
                     <div className="space-y-6">
                         <div className="grid grid-cols-3 gap-4">
                             <div className="relative group">
-                                <input 
-                                    type="number" 
-                                    value={year} 
-                                    onChange={e => setYear(parseInt(e.target.value))} 
-                                    className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                    placeholder=" "
-                                />
-                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                    Year
-                                </label>
+                                <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors" placeholder=" " />
+                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Year</label>
                             </div>
                             <div className="relative group">
-                                <input 
-                                    type="text" 
-                                    value={rating} 
-                                    onChange={e => setRating(e.target.value)} 
-                                    className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                    placeholder=" "
-                                />
-                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                    Rating
-                                </label>
+                                <input type="text" value={rating} onChange={e => setRating(e.target.value)} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors" placeholder=" " />
+                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Rating</label>
                             </div>
                             <div className="relative group">
-                                <input 
-                                    type="text" 
-                                    value={duration} 
-                                    onChange={e => setDuration(e.target.value)} 
-                                    className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                    placeholder=" "
-                                />
-                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                    Duration
-                                </label>
+                                <input type="text" value={duration} onChange={e => setDuration(e.target.value)} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors" placeholder=" " />
+                                <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Duration</label>
                             </div>
                         </div>
 
                         <div className="relative group">
-                            <input 
-                                type="text" 
-                                value={genre} 
-                                onChange={(e) => setGenre(e.target.value)}
-                                className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors"
-                                placeholder=" "
-                            />
-                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                Genre (Comma separated)
-                            </label>
+                            <input type="text" value={genre} onChange={(e) => setGenre(e.target.value)} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors" placeholder=" " />
+                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Genre (Comma separated)</label>
                         </div>
 
                         <div className="relative group">
-                            <textarea 
-                                value={description} 
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors h-28 resize-none"
-                                placeholder=" "
-                                required
-                            />
-                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">
-                                Plot Summary
-                            </label>
+                            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="block px-4 pb-2.5 pt-4 w-full text-sm text-white bg-transparent rounded-lg border border-gray-600 appearance-none focus:outline-none focus:ring-0 focus:border-violet-600 peer transition-colors h-28 resize-none" placeholder=" " required />
+                            <label className="absolute text-sm text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-[#1e293b] px-2 left-1">Plot Summary</label>
                         </div>
                     </div>
                     </div>
 
                     <div className="flex justify-end pt-4 border-t border-gray-700/50">
                     <button type="button" onClick={closeForm} className="px-6 py-2.5 rounded-lg text-gray-400 hover:text-white mr-4 font-semibold transition-colors hover:bg-white/5">Cancel</button>
-                    <button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-8 rounded-lg shadow-lg shadow-violet-900/30 transition-all hover:scale-105 active:scale-95">
-                        {editingId ? 'Save Changes' : 'Publish Content'}
+                    <button type="submit" disabled={isUploading} className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-8 rounded-lg shadow-lg shadow-violet-900/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50">
+                        {isUploading ? 'Uploading & Processing...' : (editingId ? 'Save Changes' : 'Publish Content')}
                     </button>
                     </div>
                 </form>
@@ -605,7 +528,6 @@ const AdminDashboard: React.FC = () => {
                     <tr>
                     <th className="px-8 py-5">Content</th>
                     <th className="px-6 py-5">Metadata</th>
-                    <th className="px-6 py-5">Languages</th>
                     <th className="px-6 py-5">Performance</th>
                     <th className="px-6 py-5 text-right">Actions</th>
                     </tr>
@@ -623,7 +545,6 @@ const AdminDashboard: React.FC = () => {
                                     <div className="flex items-center text-xs text-gray-500 mt-1.5 space-x-2">
                                     <span className="bg-white/10 px-1 rounded text-[10px] text-gray-300 uppercase">{movie.type}</span>
                                     <Calendar className="w-3 h-3" /> <span>{movie.year}</span>
-                                    <Clock className="w-3 h-3 ml-2" /> <span>{movie.duration}</span>
                                     </div>
                                 </div>
                             </div>
@@ -636,22 +557,6 @@ const AdminDashboard: React.FC = () => {
                             </div>
                         </td>
                         <td className="px-6 py-4">
-                            <div className="flex flex-col gap-1 text-xs text-gray-400">
-                                <div className="flex items-center gap-1">
-                                  <Mic className="w-3 h-3"/> 
-                                  {movie.audioLanguages?.slice(0,3).map(l => (
-                                    <span key={l} title={l}>{getFlag(l)}</span>
-                                  ))}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Type className="w-3 h-3"/> 
-                                  {movie.subtitleLanguages?.slice(0,3).map(l => (
-                                    <span key={l} title={l}>{getFlag(l)}</span>
-                                  ))}
-                                </div>
-                            </div>
-                        </td>
-                        <td className="px-6 py-4">
                             <div className="flex items-center text-sm font-medium text-gray-300">
                                 <PlayCircle className="w-4 h-4 mr-2 text-gray-600" />
                                 {movie.views.toLocaleString()}
@@ -659,20 +564,8 @@ const AdminDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                            <button 
-                                onClick={() => handleEdit(movie)}
-                                className="text-gray-400 hover:text-blue-400 p-2 rounded-full hover:bg-blue-500/10 transition-colors"
-                                title="Edit"
-                            >
-                                <PenSquare className="w-5 h-5" />
-                            </button>
-                            <button 
-                                onClick={() => handleDelete(movie.id)}
-                                className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-red-500/10 transition-colors"
-                                title="Delete"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                            <button onClick={() => handleEdit(movie)} className="text-gray-400 hover:text-blue-400 p-2 rounded-full hover:bg-blue-500/10 transition-colors"><PenSquare className="w-5 h-5" /></button>
+                            <button onClick={() => handleDelete(movie.id)} className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-red-500/10 transition-colors"><Trash2 className="w-5 h-5" /></button>
                         </div>
                         </td>
                     </tr>
@@ -684,23 +577,15 @@ const AdminDashboard: React.FC = () => {
       </>
       )}
 
-      {/* === USERS TAB === */}
+      {/* User Management */}
       {activeTab === 'users' && (
       <>
          <div className="flex justify-between items-center mb-6">
              <div className="relative w-80 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-violet-400 transition-colors" />
-                <input 
-                    type="text" 
-                    placeholder="Search users..." 
-                    value={userSearchTerm}
-                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-gray-700 text-white pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600/50"
-                />
+                <input type="text" placeholder="Search users..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 text-white pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-600/50" />
              </div>
          </div>
-
-         {/* User Edit Form Modal */}
          {isUserFormOpen && (
              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                  <div className="bg-[#1e293b] rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl p-6 animate-scale-in">
@@ -711,31 +596,10 @@ const AdminDashboard: React.FC = () => {
                                 {userAvatar ? <img src={userAvatar} className="w-full h-full object-cover" /> : userName.charAt(0).toUpperCase()}
                             </div>
                          </div>
-                         
-                         <div>
-                             <label className="text-xs text-gray-400 block mb-1">Full Name</label>
-                             <input type="text" value={userName} onChange={e => setUserName(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" required />
-                         </div>
-                         <div>
-                             <label className="text-xs text-gray-400 block mb-1">Email</label>
-                             <input type="email" value={userEmail} onChange={e => setUserEmail(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" required />
-                         </div>
-                         <div>
-                             <label className="text-xs text-gray-400 block mb-1">Avatar URL</label>
-                             <input type="text" value={userAvatar} onChange={e => setUserAvatar(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" placeholder="https://..." />
-                         </div>
-                         <div>
-                             <label className="text-xs text-gray-400 block mb-1">Role / Rank</label>
-                             <select value={userRole} onChange={e => setUserRole(e.target.value as UserRole)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white">
-                                 <option value={UserRole.USER}>Standard User</option>
-                                 <option value={UserRole.ADMIN}>Administrator</option>
-                             </select>
-                         </div>
-                         <div>
-                             <label className="text-xs text-gray-400 block mb-1 flex items-center gap-1"><KeyRound className="w-3 h-3"/> New Password (leave empty to keep current)</label>
-                             <input type="password" value={userPassword} onChange={e => setUserPassword(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" />
-                         </div>
-
+                         <div><label className="text-xs text-gray-400 block mb-1">Full Name</label><input type="text" value={userName} onChange={e => setUserName(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" required /></div>
+                         <div><label className="text-xs text-gray-400 block mb-1">Email</label><input type="email" value={userEmail} onChange={e => setUserEmail(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" required /></div>
+                         <div><label className="text-xs text-gray-400 block mb-1">Role / Rank</label><select value={userRole} onChange={e => setUserRole(e.target.value as UserRole)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white"><option value={UserRole.USER}>Standard User</option><option value={UserRole.ADMIN}>Administrator</option></select></div>
+                         <div><label className="text-xs text-gray-400 block mb-1 flex items-center gap-1"><KeyRound className="w-3 h-3"/> New Password</label><input type="password" value={userPassword} onChange={e => setUserPassword(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700 rounded p-2 text-white" /></div>
                          <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-700">
                              <button type="button" onClick={() => setIsUserFormOpen(false)} className="px-4 py-2 rounded text-gray-400 hover:bg-white/5">Cancel</button>
                              <button type="submit" className="px-6 py-2 bg-violet-600 rounded text-white font-bold hover:bg-violet-700">Save Changes</button>
@@ -744,44 +608,18 @@ const AdminDashboard: React.FC = () => {
                  </div>
              </div>
          )}
-
          <div className="bg-[#1e293b]/40 rounded-2xl overflow-hidden border border-gray-800/50 shadow-2xl backdrop-blur-sm">
              <table className="w-full text-left">
                  <thead className="bg-[#111827] text-gray-400 uppercase text-[10px] font-bold tracking-widest border-b border-gray-800">
-                     <tr>
-                         <th className="px-6 py-4">User</th>
-                         <th className="px-6 py-4">Email</th>
-                         <th className="px-6 py-4">Rank</th>
-                         <th className="px-6 py-4 text-right">Actions</th>
-                     </tr>
+                     <tr><th className="px-6 py-4">User</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Rank</th><th className="px-6 py-4 text-right">Actions</th></tr>
                  </thead>
                  <tbody className="divide-y divide-gray-800/50 text-gray-300">
                      {filteredUsers.map(u => (
                          <tr key={u.id} className="hover:bg-white/[0.02]">
-                             <td className="px-6 py-4 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-sm font-bold overflow-hidden">
-                                    {u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full object-cover" /> : u.name.charAt(0).toUpperCase()}
-                                </div>
-                                <span className="font-medium text-white">{u.name}</span>
-                             </td>
+                             <td className="px-6 py-4 flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-sm font-bold overflow-hidden">{u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full object-cover" /> : u.name.charAt(0).toUpperCase()}</div><span className="font-medium text-white">{u.name}</span></td>
                              <td className="px-6 py-4 text-gray-400">{u.email}</td>
-                             <td className="px-6 py-4">
-                                 {u.role === UserRole.ADMIN ? (
-                                     <span className="bg-violet-500/20 text-violet-300 px-2 py-1 rounded text-xs font-bold border border-violet-500/30 flex w-fit items-center gap-1">
-                                         <ShieldCheck className="w-3 h-3" /> ADMIN
-                                     </span>
-                                 ) : (
-                                     <span className="bg-gray-700/50 text-gray-400 px-2 py-1 rounded text-xs font-bold border border-gray-700 flex w-fit items-center gap-1">
-                                         USER
-                                     </span>
-                                 )}
-                             </td>
-                             <td className="px-6 py-4 text-right">
-                                 <div className="flex items-center justify-end gap-2">
-                                    <button onClick={() => handleEditUser(u)} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-full"><PenSquare className="w-4 h-4" /></button>
-                                    <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full"><Trash2 className="w-4 h-4" /></button>
-                                 </div>
-                             </td>
+                             <td className="px-6 py-4">{u.role === UserRole.ADMIN ? <span className="bg-violet-500/20 text-violet-300 px-2 py-1 rounded text-xs font-bold border border-violet-500/30 flex w-fit items-center gap-1"><ShieldCheck className="w-3 h-3" /> ADMIN</span> : <span className="bg-gray-700/50 text-gray-400 px-2 py-1 rounded text-xs font-bold border border-gray-700 flex w-fit items-center gap-1">USER</span>}</td>
+                             <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => handleEditUser(u)} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-full"><PenSquare className="w-4 h-4" /></button><button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full"><Trash2 className="w-4 h-4" /></button></div></td>
                          </tr>
                      ))}
                  </tbody>
@@ -790,99 +628,29 @@ const AdminDashboard: React.FC = () => {
       </>
       )}
 
-      {/* === SETTINGS TAB === */}
+      {/* Settings */}
       {activeTab === 'settings' && (
           <div className="animate-fade-in max-w-2xl mx-auto">
-              <div className="flex justify-center mb-8">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                      <LayoutTemplate className="w-8 h-8 text-violet-500" />
-                      Platform Configuration
-                  </h2>
-              </div>
-              
+              <div className="flex justify-center mb-8"><h2 className="text-2xl font-bold text-white flex items-center gap-2"><LayoutTemplate className="w-8 h-8 text-violet-500" /> Platform Configuration</h2></div>
               <div className="bg-[#1e293b]/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 shadow-2xl space-y-8">
-                  
-                  {/* Maintenance Mode Section */}
                   <div className="space-y-4">
                       <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
-                          <div>
-                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                  <Wrench className="w-5 h-5 text-orange-400" /> Maintenance Mode
-                              </h3>
-                              <p className="text-sm text-gray-400 mt-1">
-                                  When enabled, only administrators can access the site. All other users will see a maintenance screen.
-                              </p>
-                          </div>
-                          <button 
-                              onClick={() => setMaintenanceMode(!maintenanceMode)}
-                              className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${maintenanceMode ? 'bg-violet-600' : 'bg-gray-600'}`}
-                          >
-                              <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                          </button>
+                          <div><h3 className="text-lg font-bold text-white flex items-center gap-2"><Wrench className="w-5 h-5 text-orange-400" /> Maintenance Mode</h3><p className="text-sm text-gray-400 mt-1">When enabled, only administrators can access the site.</p></div>
+                          <button onClick={() => setMaintenanceMode(!maintenanceMode)} className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${maintenanceMode ? 'bg-violet-600' : 'bg-gray-600'}`}><div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`}></div></button>
                       </div>
-                      
-                      {maintenanceMode && (
-                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 animate-slide-up">
-                              <label className="text-sm text-orange-200 block mb-2 font-medium">Maintenance Message</label>
-                              <textarea 
-                                  value={maintenanceMessage}
-                                  onChange={(e) => setMaintenanceMessage(e.target.value)}
-                                  className="w-full bg-[#0f172a] border border-orange-500/30 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500 transition-all h-24 resize-none"
-                                  placeholder="We are currently performing scheduled maintenance..."
-                              />
-                          </div>
-                      )}
+                      {maintenanceMode && <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 animate-slide-up"><label className="text-sm text-orange-200 block mb-2 font-medium">Maintenance Message</label><textarea value={maintenanceMessage} onChange={(e) => setMaintenanceMessage(e.target.value)} className="w-full bg-[#0f172a] border border-orange-500/30 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500 transition-all h-24 resize-none" /></div>}
                   </div>
-
-                  {/* Notification Banner Section */}
                   <div className="space-y-4 pt-4">
                       <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
-                          <div>
-                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                  <AlertTriangle className="w-5 h-5 text-yellow-400" /> Global Notification
-                              </h3>
-                              <p className="text-sm text-gray-400 mt-1">
-                                  Display a dismissible warning or announcement banner at the top of every page.
-                              </p>
-                          </div>
-                          <button 
-                              onClick={() => setShowNotification(!showNotification)}
-                              className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${showNotification ? 'bg-violet-600' : 'bg-gray-600'}`}
-                          >
-                              <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${showNotification ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                          </button>
+                          <div><h3 className="text-lg font-bold text-white flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-yellow-400" /> Global Notification</h3><p className="text-sm text-gray-400 mt-1">Display a banner at the top of every page.</p></div>
+                          <button onClick={() => setShowNotification(!showNotification)} className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${showNotification ? 'bg-violet-600' : 'bg-gray-600'}`}><div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${showNotification ? 'translate-x-6' : 'translate-x-0'}`}></div></button>
                       </div>
-                      
-                      {showNotification && (
-                          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 animate-slide-up">
-                              <label className="text-sm text-yellow-200 block mb-2 font-medium">Notification Text</label>
-                              <input 
-                                  type="text"
-                                  value={notificationMessage}
-                                  onChange={(e) => setNotificationMessage(e.target.value)}
-                                  className="w-full bg-[#0f172a] border border-yellow-500/30 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-yellow-500 transition-all"
-                                  placeholder="Important: Service update incoming..."
-                              />
-                          </div>
-                      )}
+                      {showNotification && <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 animate-slide-up"><label className="text-sm text-yellow-200 block mb-2 font-medium">Notification Text</label><input type="text" value={notificationMessage} onChange={(e) => setNotificationMessage(e.target.value)} className="w-full bg-[#0f172a] border border-yellow-500/30 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-yellow-500 transition-all" /></div>}
                   </div>
-
-                  {/* Save Button */}
-                  <div className="pt-6 flex justify-end">
-                      <button 
-                          onClick={handleSaveSettings}
-                          disabled={settingsLoading}
-                          className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-violet-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
-                      >
-                          {settingsLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> : <Save className="w-5 h-5" />}
-                          Save Configuration
-                      </button>
-                  </div>
-
+                  <div className="pt-6 flex justify-end"><button onClick={handleSaveSettings} disabled={settingsLoading} className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-violet-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center gap-2">{settingsLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> : <Save className="w-5 h-5" />} Save Configuration</button></div>
               </div>
           </div>
       )}
-
     </div>
   );
 };
